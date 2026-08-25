@@ -23,6 +23,7 @@ from .tmdb import TmdbClient
 _CONFIG_DIR = Path(user_config_dir("Bangumi Renamer", appauthor=False))
 _CONFIG_PATH = _CONFIG_DIR / "settings.json"
 _VALID_CONFLICT_POLICIES = {"skip", "suffix", "overwrite"}
+_VALID_THEMES = {"system", "light", "dark"}
 
 
 def load_settings() -> dict[str, Any]:
@@ -33,6 +34,7 @@ def load_settings() -> dict[str, Any]:
     return {
         "language": str(stored.get("language", "en-US") or "en-US"),
         "conflict_policy": _normalize_conflict_policy(stored.get("conflict_policy")),
+        "theme": _normalize_theme(stored.get("theme")),
         "has_api_key": bool(env_key or stored_key),
         "api_key_from_environment": bool(env_key),
     }
@@ -43,12 +45,13 @@ def save_settings(payload: dict[str, Any]) -> dict[str, Any]:
     stored = _load_stored_settings()
     language = str(payload.get("language", "en-US")).strip() or "en-US"
     conflict_policy = _normalize_conflict_policy(payload.get("conflict_policy"))
+    theme = _normalize_theme(payload.get("theme"))
     api_key = payload.get("api_key")
     if isinstance(api_key, str) and api_key.strip():
         stored["api_key"] = api_key.strip()
     if payload.get("clear_api_key") is True:
         stored.pop("api_key", None)
-    stored.update({"language": language, "conflict_policy": conflict_policy})
+    stored.update({"language": language, "conflict_policy": conflict_policy, "theme": theme})
 
     _CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     temp_path = _CONFIG_PATH.with_suffix(".tmp")
@@ -149,6 +152,11 @@ def _load_stored_settings() -> dict[str, Any]:
 def _normalize_conflict_policy(value: object) -> str:
     policy = str(value or "suffix")
     return policy if policy in _VALID_CONFLICT_POLICIES else "suffix"
+
+
+def _normalize_theme(value: object) -> str:
+    theme = str(value or "system")
+    return theme if theme in _VALID_THEMES else "system"
 
 
 def _make_client(payload: dict[str, Any]) -> TmdbClient:
