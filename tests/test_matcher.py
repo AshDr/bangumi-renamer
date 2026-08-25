@@ -6,8 +6,8 @@ import httpx
 import pytest
 import respx
 
-from minifilebot.matcher import MatchError, force_match, match
-from minifilebot.tmdb import TMDB_BASE_URL, TmdbClient
+from bangumi_renamer.matcher import MatchError, force_match, match
+from bangumi_renamer.tmdb import TMDB_BASE_URL, TmdbClient
 
 
 def _search_payload(*results: dict) -> dict:

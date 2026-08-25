@@ -36,7 +36,7 @@ def main() -> None:
             "--clean",
             "--onefile",
             "--name",
-            "minifilebot-bridge",
+            "bangumi-renamer-bridge",
             "--distpath",
             str(BIN_DIR),
             "--workpath",

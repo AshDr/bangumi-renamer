@@ -5,8 +5,8 @@ from __future__ import annotations
 import httpx
 import respx
 
-from minifilebot.matcher import search_candidates
-from minifilebot.tmdb import TMDB_BASE_URL, TmdbClient
+from bangumi_renamer.matcher import search_candidates
+from bangumi_renamer.tmdb import TMDB_BASE_URL, TmdbClient
 
 
 def _payload(*results: dict) -> dict:

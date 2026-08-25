@@ -1,4 +1,4 @@
-# MiniFileBot
+# Bangumi Renamer
 
 A FileBot-style tool that renames anime / TV episode files using metadata
 from [The Movie Database](https://www.themoviedb.org/). Ships as both a Typer
@@ -22,8 +22,8 @@ The CLI requires Python 3.11+ and [`uv`](https://docs.astral.sh/uv/). Desktop
 development additionally requires Node.js 20+ and the Rust toolchain.
 
 ```bash
-git clone <this-repo> OpenFileBot
-cd OpenFileBot
+git clone <this-repo> bangumi-renamer
+cd bangumi-renamer
 uv sync                    # CLI only
 uv sync --extra dev        # Python development dependencies
 cd desktop && npm install  # React/Tauri frontend dependencies
@@ -47,19 +47,19 @@ directory through its Settings panel, so the environment variable is optional.
 Dry-run preview (default, no files touched):
 
 ```bash
-uv run minifilebot /path/to/videos
+uv run bangumi-renamer /path/to/videos
 ```
 
 Actually rename the files:
 
 ```bash
-uv run minifilebot /path/to/videos --apply
+uv run bangumi-renamer /path/to/videos --apply
 ```
 
 Force a specific TMDB TV id when auto-match is wrong:
 
 ```bash
-uv run minifilebot /path/to/videos --tmdb-id 209867
+uv run bangumi-renamer /path/to/videos --tmdb-id 209867
 ```
 
 Flags:
@@ -94,10 +94,10 @@ npm run tauri dev
 3. Use the search action on any parsed row to select a different TMDB match.
 4. Click **Apply renames**, confirm the dialog, and the files are
    renamed on disk. A history journal is written to
-   `.minifilebot/history/<timestamp>.json`.
+   `.bangumi-renamer/history/<timestamp>.json`.
 
 The React frontend never renames files itself. Tauri forwards allow-listed
-commands to `minifilebot.desktop_bridge`, which calls the same `build_plan()`
+commands to `bangumi_renamer.desktop_bridge`, which calls the same `build_plan()`
 and `apply_plan()` functions used by the CLI.
 
 To build an installable desktop bundle:
@@ -126,7 +126,7 @@ Example:
 ## Project structure
 
 ```
-src/minifilebot/
+src/bangumi_renamer/
   cli.py        # Typer entry point
   core.py       # Shared pipeline: build_plan / apply_plan
   scanner.py    # Directory traversal
@@ -136,7 +136,7 @@ src/minifilebot/
   matcher.py    # rapidfuzz scoring + search_candidates / force_match
   renamer.py    # Template + filename sanitisation + conflict handling
   display.py    # Rich preview table (CLI only)
-  history.py    # Apply journal at .minifilebot/history/
+  history.py    # Apply journal at .bangumi-renamer/history/
   desktop_bridge.py  # Validated JSON bridge to the shared Python pipeline
 desktop/
   src/          # React 18 + TypeScript frontend

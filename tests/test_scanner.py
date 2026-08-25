@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from minifilebot.scanner import scan
+from bangumi_renamer.scanner import scan
 
 
 def test_scan_directory_finds_videos(tmp_path: Path) -> None:
@@ -25,7 +25,7 @@ def test_scan_recurses(tmp_path: Path) -> None:
 
 
 def test_scan_skips_hidden_dirs(tmp_path: Path) -> None:
-    hidden = tmp_path / ".minifilebot"
+    hidden = tmp_path / ".bangumi-renamer"
     hidden.mkdir()
     (hidden / "history.mkv").touch()
     (tmp_path / "real.mkv").touch()

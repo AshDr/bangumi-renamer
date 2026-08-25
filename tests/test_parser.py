@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from minifilebot.parser import ParsedFile, ParseError, parse
+from bangumi_renamer.parser import ParsedFile, ParseError, parse
 
 FIXTURE = Path(__file__).parent / "fixtures" / "filenames.txt"
 

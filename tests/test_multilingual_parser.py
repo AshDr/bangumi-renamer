@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from minifilebot.parser import ParseError, parse
+from bangumi_renamer.parser import ParseError, parse
 
 
 @pytest.mark.parametrize(

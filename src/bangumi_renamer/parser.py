@@ -40,7 +40,7 @@ def _normalize_title(title: str) -> str:
 
 @dataclass(frozen=True, slots=True)
 class ParsedFile:
-    """The subset of anitopy output that minifilebot cares about."""
+    """The subset of anitopy output that Bangumi Renamer cares about."""
 
     source: Path
     title: str
@@ -53,7 +53,7 @@ class ParsedFile:
 
 
 class ParseError(ValueError):
-    """Raised when anitopy output is missing the fields minifilebot needs."""
+    """Raised when anitopy output is missing the fields Bangumi Renamer needs."""
 
 
 def _to_int(value: str | None) -> int | None:

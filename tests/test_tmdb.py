@@ -6,8 +6,8 @@ import httpx
 import pytest
 import respx
 
-from minifilebot.cache import JsonCache
-from minifilebot.tmdb import TMDB_BASE_URL, Episode, TmdbClient, TmdbError, TvSearchResult
+from bangumi_renamer.cache import JsonCache
+from bangumi_renamer.tmdb import TMDB_BASE_URL, Episode, TmdbClient, TmdbError, TvSearchResult
 
 
 @respx.mock

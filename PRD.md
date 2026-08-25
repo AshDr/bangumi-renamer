@@ -1,10 +1,10 @@
-# MiniFileBot - Requirements Document
+# Bangumi Renamer - Requirements Document
 
 ## 1. Overview
 
 ### 1.1 Project Name
 
-MiniFileBot (Phase 1 + Phase 2)
+Bangumi Renamer (Phase 1 + Phase 2)
 
 ### 1.2 Objective
 
@@ -14,9 +14,9 @@ Build a tool that:
 - Matches metadata via the TMDB API
 - Renames files using a standardized format, safely (dry-run by default)
 
-The tool ships with both a Typer CLI (`minifilebot`) and a Tauri 2 desktop
+The tool ships with both a Typer CLI (`bangumi-renamer`) and a Tauri 2 desktop
 application with a React 18 frontend. They share the same Python core pipeline
-(`minifilebot.core`).
+(`bangumi_renamer.core`).
 
 ---
 
@@ -32,7 +32,7 @@ application with a React 18 frontend. They share the same Python core pipeline
 - File renaming (no moving)
 - Dry-run by default, explicit confirmation required before writing to disk
 - Local cache for TMDB responses (7-day TTL)
-- Apply-journal under `.minifilebot/history/` for future undo support
+- Apply-journal under `.bangumi-renamer/history/` for future undo support
 - Tauri desktop application: drag-drop folder, plan dashboard, apply flow,
   settings persistence, manual candidate picker, and animated transitions
 
@@ -52,7 +52,7 @@ application with a React 18 frontend. They share the same Python core pipeline
 ### Input
 
 ```bash
-minifilebot /path/to/videos
+bangumi-renamer /path/to/videos
 ```
 
 ### Example Inputs
@@ -133,7 +133,7 @@ Safety rules:
 
 - Recursive scan of the input directory
 - Filters for `.mkv / .mp4 / .avi / .m4v / .mov`
-- Skips hidden files and the `.minifilebot/` working directory
+- Skips hidden files and the `.bangumi-renamer/` working directory
 
 ---
 
@@ -149,7 +149,7 @@ React 18 + TypeScript -> Tauri 2 allow-list -> JSON bridge -> Scanner / Parser
        +-- Vite / Tailwind / Lucide / Framer Motion        -> Renamer / History
 ```
 
-Both frontends call the same ``minifilebot.core`` module. Tauri runs the Python
+Both frontends call the same ``bangumi_renamer.core`` module. Tauri runs the Python
 bridge outside the WebView, so TMDB and filesystem operations never block the
 React event loop. Release builds bundle that bridge as a PyInstaller sidecar.
 
@@ -256,7 +256,7 @@ Flags (see README for full details): `--apply`, `--tmdb-id`, `--lang`,
 
 ### 11.4 Entry points
 
-- CLI: ``uv run minifilebot <path>``
+- CLI: ``uv run bangumi-renamer <path>``
 - Desktop development: ``cd desktop && npm run tauri dev``
 - Desktop package: ``cd desktop && npm run tauri:build``
 

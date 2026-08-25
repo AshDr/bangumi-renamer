@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from minifilebot.cache import JsonCache
-from minifilebot.tmdb import TmdbClient
+from bangumi_renamer.cache import JsonCache
+from bangumi_renamer.tmdb import TmdbClient
 
 
 @pytest.fixture

@@ -8,11 +8,11 @@ from pathlib import Path
 
 
 def record_apply(root: Path, renames: list[tuple[Path, Path]]) -> Path:
-    """Write a JSON file under ``<root>/.minifilebot/history/<ts>.json``.
+    """Write a JSON file under ``<root>/.bangumi-renamer/history/<ts>.json``.
 
     Returns the history file path.
     """
-    history_dir = root / ".minifilebot" / "history"
+    history_dir = root / ".bangumi-renamer" / "history"
     history_dir.mkdir(parents=True, exist_ok=True)
     timestamp = dt.datetime.now().strftime("%Y%m%dT%H%M%S")
     out_file = history_dir / f"{timestamp}.json"

@@ -11,7 +11,7 @@ VIDEO_EXTENSIONS = frozenset({".mkv", ".mp4", ".avi", ".m4v", ".mov"})
 def scan(path: Path) -> list[Path]:
     """Return video files under ``path`` (recursive if directory, [path] if file).
 
-    Hidden files and minifilebot's own history directory are skipped.
+    Hidden files and Bangumi Renamer's own history directory are skipped.
     Results are sorted for stable output.
     """
     if path.is_file():

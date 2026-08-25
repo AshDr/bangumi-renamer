@@ -63,5 +63,5 @@ tdd-summary/
 .env.*
 !.env.example
 
-# MiniFileBot runtime artifacts
-.minifilebot/
+# Bangumi Renamer runtime artifacts
+.bangumi-renamer/

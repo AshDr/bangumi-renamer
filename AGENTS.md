@@ -1,10 +1,10 @@
 # Repository Guidelines
 
 ## Project Focus
-MiniFileBot is a FileBot-style renamer for anime and TV episode files. It ships both a Typer CLI and a Tauri 2 desktop application with a React frontend. Both front ends rely on the same planning and apply pipeline in `src/minifilebot/core.py`. Keep behavior aligned across CLI and desktop when changing parsing, matching, planning, conflict handling, or apply semantics.
+Bangumi Renamer is a FileBot-style renamer for anime and TV episode files. It ships both a Typer CLI and a Tauri 2 desktop application with a React frontend. Both front ends rely on the same planning and apply pipeline in `src/bangumi_renamer/core.py`. Keep behavior aligned across CLI and desktop when changing parsing, matching, planning, conflict handling, or apply semantics.
 
 ## Project Structure & Ownership
-The repository uses a `src/` layout with the import root at `src/minifilebot/`.
+The repository uses a `src/` layout with the import root at `src/bangumi_renamer/`.
 
 - `cli.py`: Typer entry point and Rich terminal output.
 - `core.py`: shared `build_plan()` / `apply_plan()` orchestration used by CLI and GUI.
@@ -17,7 +17,7 @@ The repository uses a `src/` layout with the import root at `src/minifilebot/`.
 - `tests/`: CLI and core tests.
 - `tests/test_desktop_bridge.py`: desktop boundary and apply-safety tests.
 
-Runtime artifacts are written to `.minifilebot/`. They are local state, not source files.
+Runtime artifacts are written to `.bangumi-renamer/`. They are local state, not source files.
 
 ## Environment & Commands
 Use `uv` for Python workflows. Python 3.11+ is required.
@@ -28,8 +28,8 @@ uv sync --extra dev
 cd desktop && npm install
 uv run pytest -v
 uv run ruff check src tests
-uv run minifilebot /path/to/media
-uv run minifilebot /path/to/media --apply
+uv run bangumi-renamer /path/to/media
+uv run bangumi-renamer /path/to/media --apply
 cd desktop && npm run tauri dev
 ```
 
@@ -52,7 +52,7 @@ When changing rename logic, preserve the app's safe-by-default flow:
 - Dry-run must remain the default for the CLI.
 - Desktop preview must stay non-destructive until the user explicitly applies.
 - `apply_plan()` should only rename files that are explicitly marked actionable.
-- History output under `.minifilebot/history/` should remain consistent for applied operations.
+- History output under `.bangumi-renamer/history/` should remain consistent for applied operations.
 
 When changing TMDB or matcher behavior, account for:
 
@@ -74,7 +74,7 @@ Python tests use `pytest` and `respx`; frontend tests use Vitest.
 Do not commit secrets or generated state.
 
 - TMDB credentials may come from `.env`, `TMDB_API_KEY`, or GUI settings.
-- Do not commit `.env`, `.env.local`, `.minifilebot/`, virtual environments, coverage output, or tool caches.
+- Do not commit `.env`, `.env.local`, `.bangumi-renamer/`, virtual environments, coverage output, or tool caches.
 - Keep `git status` focused; if a new tool or workflow creates local artifacts, update `.gitignore` as part of the change.
 
 ## Commits & PRs

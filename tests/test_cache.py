@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-from minifilebot.cache import JsonCache
+from bangumi_renamer.cache import JsonCache
 
 
 def test_set_and_get_roundtrip(tmp_path: Path) -> None:

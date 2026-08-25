@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from minifilebot import desktop_bridge
+from bangumi_renamer import desktop_bridge
 
 
 def test_settings_round_trip_without_returning_secret(tmp_path: Path, monkeypatch) -> None:

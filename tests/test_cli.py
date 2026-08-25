@@ -9,8 +9,8 @@ import httpx
 import respx
 from typer.testing import CliRunner
 
-from minifilebot.cli import app
-from minifilebot.tmdb import TMDB_BASE_URL
+from bangumi_renamer.cli import app
+from bangumi_renamer.tmdb import TMDB_BASE_URL
 
 runner = CliRunner()
 
@@ -84,7 +84,7 @@ def test_apply_renames_and_writes_history(tmp_path: Path, monkeypatch) -> None:
     assert "S01E01" in renamed[0].name
     assert "The Journey" in renamed[0].name
 
-    history = tmp_path / ".minifilebot" / "history"
+    history = tmp_path / ".bangumi-renamer" / "history"
     assert history.exists() and any(history.iterdir())
     _ = expected  # kept for documentation; not asserted directly
 
@@ -194,7 +194,7 @@ def test_empty_directory(tmp_path: Path, monkeypatch) -> None:
 def test_version_option() -> None:
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
-    assert "minifilebot 0.1.0" in result.stdout
+    assert "bangumi-renamer 0.1.0" in result.stdout
 
 
 @respx.mock

@@ -20,7 +20,7 @@ from .matcher import force_match, search_candidates
 from .scanner import scan
 from .tmdb import TmdbClient
 
-_CONFIG_DIR = Path(user_config_dir("MiniFileBot", appauthor=False))
+_CONFIG_DIR = Path(user_config_dir("Bangumi Renamer", appauthor=False))
 _CONFIG_PATH = _CONFIG_DIR / "settings.json"
 _VALID_CONFLICT_POLICIES = {"skip", "suffix", "overwrite"}
 
@@ -225,7 +225,7 @@ def _deserialize_apply_item(raw: object, *, root: Path) -> PlanItem:
 def main() -> None:
     """Read one request from stdin and write one JSON response to stdout."""
     if len(sys.argv) != 2:
-        raise SystemExit("usage: python -m minifilebot.desktop_bridge <command>")
+        raise SystemExit("usage: python -m bangumi_renamer.desktop_bridge <command>")
     try:
         payload = json.load(sys.stdin)
         if not isinstance(payload, dict):

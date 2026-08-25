@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from minifilebot.core import build_plan
-from minifilebot.matcher import MatchResult
-from minifilebot.parser import ParsedFile
-from minifilebot.tmdb import Episode
+from bangumi_renamer.core import build_plan
+from bangumi_renamer.matcher import MatchResult
+from bangumi_renamer.parser import ParsedFile
+from bangumi_renamer.tmdb import Episode
 
 
 class DummyClient:
@@ -56,8 +56,8 @@ def test_build_plan_reuses_match_and_season_cache(monkeypatch, tmp_path: Path) -
         match_calls.append(title)
         return MatchResult(tmdb_id=209867, name="Frieren", confidence=100.0, reason="test")
 
-    monkeypatch.setattr("minifilebot.core.parse", fake_parse)
-    monkeypatch.setattr("minifilebot.core.match", fake_match)
+    monkeypatch.setattr("bangumi_renamer.core.parse", fake_parse)
+    monkeypatch.setattr("bangumi_renamer.core.match", fake_match)
 
     client = DummyClient(
         [
@@ -96,7 +96,7 @@ def test_build_plan_marks_duplicate_planned_target_as_conflict(
             extension="mkv",
         )
 
-    monkeypatch.setattr("minifilebot.core.parse", fake_parse)
+    monkeypatch.setattr("bangumi_renamer.core.parse", fake_parse)
 
     forced = MatchResult(tmdb_id=1, name="Same Show", confidence=100.0, reason="forced")
     client = DummyClient([Episode(season=1, number=1, name="Pilot")])

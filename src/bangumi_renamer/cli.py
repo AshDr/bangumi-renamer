@@ -1,4 +1,4 @@
-"""Typer entry point for the minifilebot CLI."""
+"""Typer entry point for the bangumi-renamer CLI."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ from .scanner import scan
 from .tmdb import TmdbClient, TmdbError
 
 app = typer.Typer(
-    name="minifilebot",
+    name="bangumi-renamer",
     help="Rename anime/TV episode files using TMDB metadata.",
     no_args_is_help=True,
     add_completion=False,
@@ -36,7 +36,7 @@ class ConflictPolicy(StrEnum):
 
 def _version_callback(value: bool) -> None:
     if value:
-        typer.echo(f"minifilebot {__version__}")
+        typer.echo(f"bangumi-renamer {__version__}")
         raise typer.Exit(code=0)
 
 
@@ -98,7 +98,7 @@ def _json_payload(
 
 
 def _suggest_apply(path: Path) -> str:
-    return f"Next: run `minifilebot {path} --apply` when the preview looks right."
+    return f"Next: run `bangumi-renamer {path} --apply` when the preview looks right."
 
 
 def _write_json(console: Console, payload: dict[str, Any]) -> None:
@@ -149,9 +149,9 @@ def rename(
     """Rename video files in PATH based on TMDB metadata.
 
     Examples:
-      minifilebot ~/Videos/anime
-      minifilebot ~/Videos/anime --apply --yes
-      minifilebot ~/Videos/anime --tmdb-id 209867 --plain
+      bangumi-renamer ~/Videos/anime
+      bangumi-renamer ~/Videos/anime --apply --yes
+      bangumi-renamer ~/Videos/anime --tmdb-id 209867 --plain
 
     Support:
       See README.md in this repository and open an issue there if matching looks wrong.

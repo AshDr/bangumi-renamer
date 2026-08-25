@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from minifilebot.renamer import build_new_name, resolve_conflict, sanitize_component
+from bangumi_renamer.renamer import build_new_name, resolve_conflict, sanitize_component
 
 
 def test_build_new_name_basic() -> None:

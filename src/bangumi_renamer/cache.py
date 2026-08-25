@@ -2,7 +2,7 @@
 
 Used only for TMDB responses. Not thread-safe, but the CLI runs a single
 process so that is fine. Cache directory lives under platformdirs' user cache
-(e.g. ``~/Library/Caches/minifilebot`` on macOS).
+(e.g. ``~/Library/Caches/bangumi-renamer`` on macOS).
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ DEFAULT_TTL_SECONDS = 7 * 24 * 60 * 60  # 7 days
 
 
 def _default_cache_root() -> Path:
-    return Path(user_cache_dir("minifilebot"))
+    return Path(user_cache_dir("bangumi-renamer"))
 
 
 class JsonCache:

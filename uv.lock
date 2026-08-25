@@ -158,7 +158,7 @@ wheels = [
 ]
 
 [[package]]
-name = "minifilebot"
+name = "bangumi-renamer"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

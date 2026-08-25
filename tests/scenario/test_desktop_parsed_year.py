@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from minifilebot.core import PlanItem
-from minifilebot.desktop_bridge import _serialize_plan_item
-from minifilebot.parser import ParsedFile, parse
+from bangumi_renamer.core import PlanItem
+from bangumi_renamer.desktop_bridge import _serialize_plan_item
+from bangumi_renamer.parser import ParsedFile, parse
 
 
 def _serialize_parsed_file(parsed: ParsedFile) -> dict[str, object]:
