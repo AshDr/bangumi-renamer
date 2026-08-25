@@ -1,7 +1,8 @@
-"""Rich presentation of rename plans."""
+"""Presentation helpers for rename plans."""
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -27,6 +28,11 @@ STATUS_STYLES = {
 }
 
 
+def summarize_rows(rows: list[PlanRow]) -> dict[str, int]:
+    """Return per-status counts for ``rows``."""
+    return dict(sorted(Counter(row.status for row in rows).items()))
+
+
 def render_table(rows: list[PlanRow], console: Console) -> None:
     table = Table(show_lines=False, header_style="bold cyan")
     table.add_column("#", style="dim", width=3)
@@ -46,9 +52,19 @@ def render_table(rows: list[PlanRow], console: Console) -> None:
     console.print(table)
 
 
-def render_summary(rows: list[PlanRow], console: Console) -> None:
-    counts: dict[str, int] = {}
+def render_plain(rows: list[PlanRow], console: Console) -> None:
+    """Render a stable tab-separated format for scripts."""
+    console.file.write("source\ttarget\tstatus\tdetail\n")
     for row in rows:
-        counts[row.status] = counts.get(row.status, 0) + 1
+        console.file.write(
+            "\t".join(
+                [row.source.name, row.target_name or "", row.status, row.detail]
+            )
+            + "\n"
+        )
+
+
+def render_summary(rows: list[PlanRow], console: Console) -> None:
+    counts = summarize_rows(rows)
     parts = [f"[{STATUS_STYLES.get(s, 'white')}]{s}: {n}[/]" for s, n in sorted(counts.items())]
     console.print("  ".join(parts) if parts else "no files")

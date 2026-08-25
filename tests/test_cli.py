@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import httpx
@@ -187,4 +188,96 @@ def test_empty_directory(tmp_path: Path, monkeypatch) -> None:
     empty.mkdir()
     result = runner.invoke(app, [str(empty)])
     assert result.exit_code == 0
-    assert "No video files" in result.output
+    assert "No video files" in result.stderr
+
+
+def test_version_option() -> None:
+    result = runner.invoke(app, ["--version"])
+    assert result.exit_code == 0
+    assert "minifilebot 0.1.0" in result.stdout
+
+
+@respx.mock
+def test_json_output_is_machine_readable(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("TMDB_API_KEY", "test-key")
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+
+    source = tmp_path / "[SubsPlease] Frieren - 01 (1080p).mkv"
+    source.touch()
+
+    _mock_frieren()
+
+    result = runner.invoke(app, [str(tmp_path), "--json"])
+
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.stdout)
+    assert payload["apply_requested"] is False
+    assert payload["summary"]["OK"] == 1
+    assert payload["items"][0]["target"].endswith(".mkv")
+    assert "Dry-run only" in result.stderr
+
+
+@respx.mock
+def test_plain_output_uses_tab_separated_rows(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("TMDB_API_KEY", "test-key")
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+
+    source = tmp_path / "[SubsPlease] Frieren - 01 (1080p).mkv"
+    source.touch()
+
+    _mock_frieren()
+
+    result = runner.invoke(app, [str(tmp_path), "--plain"])
+
+    assert result.exit_code == 0, result.output
+    lines = result.stdout.strip().splitlines()
+    assert lines[0] == "source\ttarget\tstatus\tdetail"
+    assert "[SubsPlease] Frieren - 01 (1080p).mkv" in lines[1]
+    assert lines[1].split("\t")[:3][-1] == "OK"
+
+
+@respx.mock
+def test_apply_requires_yes_in_non_interactive_mode(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("TMDB_API_KEY", "test-key")
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+
+    source = tmp_path / "[SubsPlease] Frieren - 01 (1080p).mkv"
+    source.touch()
+
+    _mock_frieren()
+
+    result = runner.invoke(app, [str(tmp_path), "--apply"])
+
+    assert result.exit_code == 2, result.output
+    assert "Refusing to prompt in non-interactive mode" in result.stderr
+    assert source.exists()
+
+
+def test_plain_and_json_are_mutually_exclusive(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("TMDB_API_KEY", "test-key")
+    source = tmp_path / "x.mkv"
+    source.touch()
+
+    result = runner.invoke(app, [str(tmp_path), "--plain", "--json"])
+
+    assert result.exit_code == 2
+    assert "Choose either --plain or --json" in result.stderr
+
+
+@respx.mock
+def test_invalid_tmdb_id_exits_cleanly(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("TMDB_API_KEY", "test-key")
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+
+    source = tmp_path / "totally_wrong_filename - 01.mkv"
+    source.touch()
+
+    respx.get(f"{TMDB_BASE_URL}/tv/999999999").mock(
+        return_value=httpx.Response(404, json={"status_message": "Not Found"})
+    )
+
+    result = runner.invoke(app, [str(tmp_path), "--tmdb-id", "999999999"])
+
+    assert result.exit_code == 2, result.output
+    assert "--tmdb-id 999999999 is not a valid TMDB TV id" in result.stderr

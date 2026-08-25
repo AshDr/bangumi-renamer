@@ -18,17 +18,15 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.2",
-    "pytest-qt>=4.4",
     "respx>=0.21",
     "ruff>=0.5",
 ]
-gui = [
-    "pyside6>=6.7",
+desktop = [
+    "pyinstaller>=6.15",
 ]
 
 [project.scripts]
 minifilebot = "minifilebot.cli:app"
-minifilebot-gui = "minifilebot.gui.main:run"
 
 [build-system]
 requires = ["hatchling"]
@@ -47,8 +45,6 @@ select = ["E", "F", "I", "B", "UP", "N", "SIM"]
 [tool.ruff.lint.per-file-ignores]
 # Typer's idiomatic default-arg pattern trips B008 by design.
 "src/minifilebot/cli.py" = ["B008"]
-# PySide6 requires camelCase override signatures with Qt singleton defaults.
-"src/minifilebot/gui/*.py" = ["N802", "N803", "N806", "B008"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -14,8 +14,9 @@ Build a tool that:
 - Matches metadata via the TMDB API
 - Renames files using a standardized format, safely (dry-run by default)
 
-The tool ships with both a Typer CLI (`minifilebot`) and a PySide6 desktop
-GUI (`minifilebot-gui`). They share the same core pipeline (`minifilebot.core`).
+The tool ships with both a Typer CLI (`minifilebot`) and a Tauri 2 desktop
+application with a React 18 frontend. They share the same Python core pipeline
+(`minifilebot.core`).
 
 ---
 
@@ -26,14 +27,14 @@ GUI (`minifilebot-gui`). They share the same core pipeline (`minifilebot.core`).
 - Single / batch file processing (recursive directory scan)
 - TV series (anime-focused)
 - TMDB metadata matching with fuzzy scoring + year tiebreaker
-- Manual TMDB id override (`--tmdb-id` on CLI / right-click picker in GUI)
+- Manual TMDB id override (`--tmdb-id` on CLI / candidate picker on desktop)
   for when auto-match is wrong
 - File renaming (no moving)
 - Dry-run by default, explicit confirmation required before writing to disk
 - Local cache for TMDB responses (7-day TTL)
 - Apply-journal under `.minifilebot/history/` for future undo support
-- PySide6 desktop GUI: drag-drop folder, preview table, apply flow,
-  settings persistence, manual candidate picker
+- Tauri desktop application: drag-drop folder, plan dashboard, apply flow,
+  settings persistence, manual candidate picker, and animated transitions
 
 ### Excluded
 
@@ -42,7 +43,7 @@ GUI (`minifilebot-gui`). They share the same core pipeline (`minifilebot.core`).
 - Multiple metadata sources (TVDB, AniDB, Bangumi)
 - Custom rename templates
 - `undo` subcommand (history file is written but reverse not implemented yet)
-- Packaged binaries (.app / .exe); Phase 2 ships as `uv run` scripts only
+- Signed and notarized release artifacts
 
 ---
 
@@ -139,21 +140,18 @@ Safety rules:
 ## 5. Architecture
 
 ```
-Front-ends         shared pipeline                    I/O
----------          ----------------                   ----
-CLI  (Typer)   \   Scanner    directory walk
-                \  Parser     anitopy + normalisation
-GUI (PySide6)  --> Matcher    rapidfuzz scoring --->  TMDB (httpx + JSON
-                /             (search_candidates /                disk cache,
-                /              match / force_match)             7d TTL)
-                   Core.build_plan / apply_plan
-                   Renamer    template + sanitise + conflicts
-                   History    .minifilebot/history/<ts>.json
+Frontends                desktop boundary             shared Python pipeline
+---------                ----------------             ----------------------
+CLI (Typer) ---------------------------------------> Core.build_plan/apply_plan
+
+React 18 + TypeScript -> Tauri 2 allow-list -> JSON bridge -> Scanner / Parser
+       |                   (Rust)                           -> Matcher / TMDB
+       +-- Vite / Tailwind / Lucide / Framer Motion        -> Renamer / History
 ```
 
-Both front-ends call the same ``minifilebot.core`` module, so behaviour is
-guaranteed identical. The GUI adds a ``QThread``-based worker layer so TMDB
-network I/O does not block the event loop.
+Both frontends call the same ``minifilebot.core`` module. Tauri runs the Python
+bridge outside the WebView, so TMDB and filesystem operations never block the
+React event loop. Release builds bundle that bridge as a PyInstaller sidecar.
 
 ---
 
@@ -206,6 +204,10 @@ Flags (see README for full details): `--apply`, `--tmdb-id`, `--lang`,
 - `rapidfuzz` (match scoring)
 - `httpx` (TMDB client) + `platformdirs` (cache dir)
 - `pytest` + `respx` (offline TMDB mocks)
+- Tauri 2 + Rust (desktop shell and command allow-list)
+- React 18 + TypeScript + Vite 7 (desktop UI)
+- Tailwind CSS + Lucide React + Framer Motion (visual system)
+- Vitest (frontend unit tests)
 
 ---
 
@@ -214,18 +216,18 @@ Flags (see README for full details): `--apply`, `--tmdb-id`, `--lang`,
 - `undo` subcommand that reads history files
 - Multi-source metadata (TVDB, AniDB, Bangumi)
 - Subtitle download integration
-- Packaged GUI binaries (.app on macOS, .exe on Windows) via PyInstaller
+- Signed and notarized desktop releases
 - Custom rename templates and per-directory config
 - Editable target cells in the GUI table
 
 ---
 
-## 11. GUI (Phase 2)
+## 11. Desktop Application (Phase 2)
 
 ### 11.1 Goals
 
 - First-class experience for non-terminal users
-- CLI parity: everything the CLI can do, the GUI can do
+- CLI parity: everything the CLI can do, the desktop application can do
 - Manual override beyond ``--tmdb-id``: let the user pick from a ranked
   TMDB candidate list when auto-match is wrong or ambiguous
 
@@ -233,35 +235,36 @@ Flags (see README for full details): `--apply`, `--tmdb-id`, `--lang`,
 
 | Component | Purpose |
 |-----------|---------|
-| ``MainWindow`` | Toolbar, menu, drag-drop area, preview table, status bar |
-| ``PlanModel`` | ``QAbstractTableModel`` wrapping ``list[PlanItem]`` |
-| ``PlanView`` | ``QTableView`` with right-click "Pick different match..." |
-| ``SettingsDialog`` | TMDB API key (password echo) / language / conflict policy |
-| ``CandidateDialog`` | Scored TMDB candidates with overview, double-click to accept |
-| ``ScanWorker`` / ``ApplyWorker`` / ``CandidateFetchWorker`` / ``RebuildWorker`` | ``QThread`` workers so TMDB I/O never blocks the UI |
+| ``App`` | Workflow sidebar, folder drop area, preview table, summaries, and apply bar |
+| ``SettingsModal`` | TMDB API key, language, and conflict policy |
+| ``CandidateModal`` | Ranked TMDB candidates with confidence and overview |
+| ``desktopApi`` | Typed frontend API with a non-destructive browser preview adapter |
+| ``execute_bridge`` | Tauri command that only accepts allow-listed operations |
+| ``desktop_bridge`` | Validates JSON payloads and calls the shared Python pipeline |
 
 ### 11.3 UX rules
 
 - Default dry-run: scan a folder, show the plan, never write until the user
   clicks Apply AND confirms a modal dialog.
-- All TMDB network I/O runs on a worker thread.
-- API key resolution order: ``$TMDB_API_KEY`` > ``QSettings`` > prompt.
+- All TMDB and filesystem I/O runs outside the WebView.
+- API key resolution order: ``$TMDB_API_KEY`` > platform settings file > prompt.
   First run with no key shows the Settings dialog automatically.
 - API key is stored with password echo and masked in any error messages.
-- Right-click on any row -> "Pick different match..." opens the candidate
-  dialog. Picking an entry re-resolves every row whose parsed title matches,
+- The search action on any parsed row opens the candidate dialog. Picking an
+  entry re-resolves every row whose parsed title matches,
   not just the clicked one.
 
 ### 11.4 Entry points
 
 - CLI: ``uv run minifilebot <path>``
-- GUI: ``uv run minifilebot-gui`` (requires ``uv sync --extra gui``)
+- Desktop development: ``cd desktop && npm run tauri dev``
+- Desktop package: ``cd desktop && npm run tauri:build``
 
 ### 11.5 Acceptance criteria
 
-- ``uv run minifilebot-gui`` opens the main window without error.
+- ``npm run tauri dev`` opens the main window without error.
 - Dropping a folder populates the preview table with correct status colours.
 - Apply renames the files on disk and writes the history journal.
-- Right-clicking a "no season" row and picking a different TMDB entry
+- Opening a "no season" row and picking a different TMDB entry
   updates that row to OK with the new series name and episode title.
-- Closing the window while a worker is running does not crash the process.
+- Closing the window while a bridge command is running does not corrupt files.

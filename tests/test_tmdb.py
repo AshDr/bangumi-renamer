@@ -100,7 +100,9 @@ def test_non_2xx_raises(tmdb_client: TmdbClient) -> None:
         tmdb_client.get_tv(999999999)
 
 
-def test_missing_api_key_raises(tmp_path) -> None:
+def test_missing_api_key_raises(tmp_path, monkeypatch) -> None:
+    # Isolate the constructor from any real credential in the developer shell.
+    monkeypatch.delenv("TMDB_API_KEY", raising=False)
     cache = JsonCache(root=tmp_path, ttl=3600)
     with pytest.raises(TmdbError):
         TmdbClient(api_key=None, cache=cache)

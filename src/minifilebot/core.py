@@ -19,6 +19,8 @@ from .tmdb import Episode, TmdbClient, TmdbError
 
 # (file_index, total_files, source_path) — GUI wires this to a progress bar.
 ProgressCb = Callable[[int, int, Path], None]
+SeasonCache = dict[tuple[int, int], dict[int, Episode]]
+MatchCache = dict[str, MatchResult | MatchError]
 
 
 @dataclass(slots=True)
@@ -45,8 +47,8 @@ def build_plan(
     Per-season TMDB fetches and per-title match results are memoised within a
     single call so a directory of one show only hits TMDB once per season.
     """
-    season_cache: dict[tuple[int, int], dict[int, Episode]] = {}
-    match_cache: dict[str, MatchResult | MatchError] = {}
+    season_cache: SeasonCache = {}
+    match_cache: MatchCache = {}
     plan: list[PlanItem] = []
     planned_targets: set[Path] = set()
 
@@ -55,77 +57,142 @@ def build_plan(
         if progress_cb is not None:
             progress_cb(idx, total, source)
 
-        try:
-            parsed = parse(source)
-        except ParseError as exc:
-            plan.append(
-                PlanItem(source, None, None, None, "unparsed", detail=str(exc) if verbose else "")
-            )
+        parsed = _parse_source(source, verbose=verbose)
+        if isinstance(parsed, PlanItem):
+            plan.append(parsed)
             continue
 
-        if forced is not None:
-            match_result: MatchResult = forced
-        else:
-            cached = match_cache.get(parsed.title)
-            if isinstance(cached, MatchResult):
-                match_result = cached
-            elif isinstance(cached, MatchError):
-                plan.append(PlanItem(source, parsed, None, None, "no match", detail=str(cached)))
-                continue
-            else:
-                try:
-                    match_result = match(parsed.title, client=client)
-                except MatchError as exc:
-                    match_cache[parsed.title] = exc
-                    plan.append(
-                        PlanItem(source, parsed, None, None, "no match", detail=str(exc))
-                    )
-                    continue
-                match_cache[parsed.title] = match_result
+        match_result = _resolve_match(parsed, client=client, forced=forced, match_cache=match_cache)
+        if isinstance(match_result, PlanItem):
+            plan.append(match_result)
+            continue
 
-        key = (match_result.tmdb_id, parsed.season)
-        if key not in season_cache:
-            try:
-                episodes = client.get_season(match_result.tmdb_id, parsed.season)
-            except TmdbError:
-                detail = explain_season_lookup_failure(
-                    client, match_result.tmdb_id, match_result.name, parsed.season
-                )
-                plan.append(
-                    PlanItem(source, parsed, match_result, None, "no season", detail=detail)
-                )
-                continue
-            season_cache[key] = {ep.number: ep for ep in episodes}
-
-        ep = season_cache[key].get(parsed.episode)
-        episode_title = ep.name if ep else ""
-
-        new_name = build_new_name(
-            series=match_result.name,
-            season=parsed.season,
-            episode=parsed.episode,
-            episode_title=episode_title,
-            extension=parsed.extension,
+        episodes = _get_season_episodes(
+            parsed,
+            match_result,
+            client=client,
+            season_cache=season_cache,
         )
-        target = source.with_name(new_name)
-
-        if target == source:
-            plan.append(PlanItem(source, parsed, match_result, target, "OK", detail="no-op"))
+        if isinstance(episodes, PlanItem):
+            plan.append(episodes)
             continue
 
-        resolved = resolve_conflict(target, on_conflict=on_conflict)
-        if resolved is None or resolved in planned_targets:
-            plan.append(
-                PlanItem(
-                    source, parsed, match_result, target, "conflict",
-                    detail=f"target exists: {target.name}",
-                )
+        plan.append(
+            _build_plan_item(
+                source,
+                parsed,
+                match_result,
+                episodes,
+                on_conflict=on_conflict,
+                planned_targets=planned_targets,
             )
-            continue
-        planned_targets.add(resolved)
-        plan.append(PlanItem(source, parsed, match_result, resolved, "OK"))
+        )
 
     return plan
+
+
+def _parse_source(source: Path, *, verbose: bool) -> ParsedFile | PlanItem:
+    try:
+        return parse(source)
+    except ParseError as exc:
+        return PlanItem(
+            source,
+            None,
+            None,
+            None,
+            "unparsed",
+            detail=str(exc) if verbose else "",
+        )
+
+
+def _resolve_match(
+    parsed: ParsedFile,
+    *,
+    client: TmdbClient,
+    forced: MatchResult | None,
+    match_cache: MatchCache,
+) -> MatchResult | PlanItem:
+    if forced is not None:
+        return forced
+
+    cached = match_cache.get(parsed.title)
+    if isinstance(cached, MatchResult):
+        return cached
+    if isinstance(cached, MatchError):
+        return PlanItem(parsed.source, parsed, None, None, "no match", detail=str(cached))
+
+    try:
+        match_result = match(parsed.title, client=client)
+    except MatchError as exc:
+        match_cache[parsed.title] = exc
+        return PlanItem(parsed.source, parsed, None, None, "no match", detail=str(exc))
+
+    match_cache[parsed.title] = match_result
+    return match_result
+
+
+def _get_season_episodes(
+    parsed: ParsedFile,
+    match_result: MatchResult,
+    *,
+    client: TmdbClient,
+    season_cache: SeasonCache,
+) -> dict[int, Episode] | PlanItem:
+    key = (match_result.tmdb_id, parsed.season)
+    episodes = season_cache.get(key)
+    if episodes is not None:
+        return episodes
+
+    try:
+        fetched = client.get_season(match_result.tmdb_id, parsed.season)
+    except TmdbError:
+        detail = explain_season_lookup_failure(
+            client, match_result.tmdb_id, match_result.name, parsed.season
+        )
+        return PlanItem(parsed.source, parsed, match_result, None, "no season", detail=detail)
+
+    episodes = {ep.number: ep for ep in fetched}
+    season_cache[key] = episodes
+    return episodes
+
+
+def _build_plan_item(
+    source: Path,
+    parsed: ParsedFile,
+    match_result: MatchResult,
+    episodes: dict[int, Episode],
+    *,
+    on_conflict: str,
+    planned_targets: set[Path],
+) -> PlanItem:
+    episode = episodes.get(parsed.episode)
+    episode_title = episode.name if episode else ""
+
+    new_name = build_new_name(
+        series=match_result.name,
+        season=parsed.season,
+        episode=parsed.episode,
+        episode_title=episode_title,
+        extension=parsed.extension,
+    )
+    target = source.with_name(new_name)
+
+    if target == source:
+        return PlanItem(source, parsed, match_result, target, "OK", detail="no-op")
+
+    resolved = resolve_conflict(target, on_conflict=on_conflict)
+    if resolved is None or resolved in planned_targets:
+        return PlanItem(
+            source,
+            parsed,
+            match_result,
+            target,
+            "conflict",
+            detail=f"target exists: {target.name}",
+        )
+
+    planned_targets.add(resolved)
+    return PlanItem(source, parsed, match_result, resolved, "OK")
 
 
 def apply_plan(
