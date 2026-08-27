@@ -38,11 +38,19 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Local documentation and desktop application
+# Local documentation
 docs/
-desktop/
 AGENTS.md
 PRD.md
+
+# Desktop dependencies, caches, and build artifacts
+desktop/node_modules/
+desktop/dist/
+desktop/.npm-cache/
+desktop/.cargo-home/
+desktop/src-tauri/target/
+desktop/src-tauri/bin/
+desktop/src-tauri/gen/
 
 # Editor / OS / AI tools
 .vscode/

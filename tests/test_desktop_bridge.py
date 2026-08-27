@@ -18,8 +18,10 @@ def test_settings_round_trip_without_returning_secret(tmp_path: Path, monkeypatc
     )
 
     assert settings == {
+        "ui_language": "en-US",
         "language": "zh-CN",
         "conflict_policy": "skip",
+        "theme": "system",
         "has_api_key": True,
         "api_key_from_environment": False,
     }
