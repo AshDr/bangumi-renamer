@@ -1,6 +1,6 @@
 """JSON bridge used by the Tauri desktop application.
 
-The bridge keeps filesystem and TMDB work in Python so the CLI and desktop
+The bridge keeps filesystem and metadata-provider work in Python so the CLI and desktop
 application continue to share the same planning and apply pipeline.
 """
 
@@ -17,8 +17,10 @@ from platformdirs import user_config_dir
 
 from .core import PlanItem, apply_plan, build_plan
 from .matcher import force_match, search_candidates
+from .metadata import MetadataClient
 from .parser import extract_media_extension
 from .scanner import scan
+from .thetvdb import TheTvdbClient
 from .tmdb import TmdbClient
 
 _CONFIG_DIR = Path(user_config_dir("Bangumi Renamer", appauthor=False))
@@ -26,39 +28,70 @@ _CONFIG_PATH = _CONFIG_DIR / "settings.json"
 _VALID_CONFLICT_POLICIES = {"skip", "suffix", "overwrite"}
 _VALID_UI_LANGUAGES = {"zh-CN", "zh-TW", "en-US", "ja-JP"}
 _VALID_THEMES = {"system", "light", "dark"}
+_VALID_METADATA_PROVIDERS = {"thetvdb", "tmdb"}
 
 
 def load_settings() -> dict[str, Any]:
-    """Load desktop preferences without exposing a stored API key to the UI."""
+    """Load desktop preferences without exposing stored credentials to the UI."""
     stored = _load_stored_settings()
-    env_key = os.environ.get("TMDB_API_KEY", "").strip()
-    stored_key = str(stored.get("api_key", "")).strip()
+    provider = _normalize_metadata_provider(stored.get("metadata_provider"))
+    tmdb_key, tmdb_key_from_env = _credential_value(
+        stored, "TMDB_API_KEY", "tmdb_api_key", "api_key"
+    )
+    thetvdb_key, thetvdb_key_from_env = _credential_value(
+        stored, "THETVDB_API_KEY", "thetvdb_api_key"
+    )
+    thetvdb_pin, thetvdb_pin_from_env = _credential_value(
+        stored, "THETVDB_PIN", "thetvdb_pin"
+    )
+    has_tmdb_api_key = bool(tmdb_key)
+    has_thetvdb_api_key = bool(thetvdb_key)
+    selected_has_key = has_thetvdb_api_key if provider == "thetvdb" else has_tmdb_api_key
+    selected_env_key = thetvdb_key_from_env if provider == "thetvdb" else tmdb_key_from_env
     return {
+        "metadata_provider": provider,
         "ui_language": _normalize_ui_language(stored.get("ui_language")),
-        "language": str(stored.get("language", "en-US") or "en-US"),
         "conflict_policy": _normalize_conflict_policy(stored.get("conflict_policy")),
         "theme": _normalize_theme(stored.get("theme")),
-        "has_api_key": bool(env_key or stored_key),
-        "api_key_from_environment": bool(env_key),
+        "has_api_key": selected_has_key,
+        "api_key_from_environment": selected_env_key,
+        "has_thetvdb_api_key": has_thetvdb_api_key,
+        "thetvdb_api_key_from_environment": thetvdb_key_from_env,
+        "has_thetvdb_pin": bool(thetvdb_pin),
+        "thetvdb_pin_from_environment": thetvdb_pin_from_env,
+        "has_tmdb_api_key": has_tmdb_api_key,
+        "tmdb_api_key_from_environment": tmdb_key_from_env,
     }
 
 
 def save_settings(payload: dict[str, Any]) -> dict[str, Any]:
     """Persist validated desktop preferences in the platform config directory."""
     stored = _load_stored_settings()
-    language = str(payload.get("language", "en-US")).strip() or "en-US"
-    ui_language = _normalize_ui_language(payload.get("ui_language"))
-    conflict_policy = _normalize_conflict_policy(payload.get("conflict_policy"))
-    theme = _normalize_theme(payload.get("theme"))
-    api_key = payload.get("api_key")
-    if isinstance(api_key, str) and api_key.strip():
-        stored["api_key"] = api_key.strip()
-    if payload.get("clear_api_key") is True:
+    ui_language = _normalize_ui_language(payload.get("ui_language", stored.get("ui_language")))
+    conflict_policy = _normalize_conflict_policy(
+        payload.get("conflict_policy", stored.get("conflict_policy"))
+    )
+    theme = _normalize_theme(payload.get("theme", stored.get("theme")))
+    provider = _normalize_metadata_provider(
+        payload.get("metadata_provider", stored.get("metadata_provider"))
+    )
+
+    # ``api_key`` is the legacy TMDB field and remains accepted during migration.
+    _store_secret(stored, "tmdb_api_key", payload.get("tmdb_api_key", payload.get("api_key")))
+    _store_secret(stored, "thetvdb_api_key", payload.get("thetvdb_api_key"))
+    _store_secret(stored, "thetvdb_pin", payload.get("thetvdb_pin"))
+    if payload.get("clear_tmdb_api_key") is True or payload.get("clear_api_key") is True:
+        stored.pop("tmdb_api_key", None)
         stored.pop("api_key", None)
+    if payload.get("clear_thetvdb_api_key") is True:
+        stored.pop("thetvdb_api_key", None)
+    if payload.get("clear_thetvdb_pin") is True:
+        stored.pop("thetvdb_pin", None)
+    stored.pop("language", None)
     stored.update(
         {
+            "metadata_provider": provider,
             "ui_language": ui_language,
-            "language": language,
             "conflict_policy": conflict_policy,
             "theme": theme,
         }
@@ -90,7 +123,7 @@ def scan_folder(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def search_matches(payload: dict[str, Any]) -> dict[str, Any]:
-    """Return scored TMDB candidates for a parsed series title."""
+    """Return scored provider candidates for a parsed series title."""
     query = str(payload.get("query", "")).strip()
     if not query:
         raise ValueError("A non-empty candidate query is required.")
@@ -103,14 +136,14 @@ def search_matches(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def rebuild_matches(payload: dict[str, Any]) -> dict[str, Any]:
-    """Rebuild selected rows using a user-selected TMDB series."""
+    """Rebuild selected rows using a user-selected provider series."""
     sources = [_require_file(path) for path in payload.get("sources", [])]
     if not sources:
         raise ValueError("At least one source file is required.")
-    tmdb_id = int(payload["tmdb_id"])
+    provider_id = int(payload.get("provider_id", payload.get("tmdb_id")))
     client = _make_client(payload)
     try:
-        forced = force_match(tmdb_id, client=client)
+        forced = force_match(provider_id, client=client)
         items = build_plan(
             files=sources,
             client=client,
@@ -175,10 +208,39 @@ def _normalize_theme(value: object) -> str:
     return theme if theme in _VALID_THEMES else "system"
 
 
-def _make_client(payload: dict[str, Any]) -> TmdbClient:
+def _normalize_metadata_provider(value: object) -> str:
+    provider = str(value or "thetvdb").lower()
+    return provider if provider in _VALID_METADATA_PROVIDERS else "thetvdb"
+
+
+def _store_secret(stored: dict[str, Any], key: str, value: object) -> None:
+    if isinstance(value, str) and value.strip():
+        stored[key] = value.strip()
+
+
+def _credential_value(
+    stored: dict[str, Any], environment_name: str, *stored_keys: str
+) -> tuple[str, bool]:
+    environment_value = os.environ.get(environment_name, "").strip()
+    stored_value = next(
+        (str(stored.get(key) or "").strip() for key in stored_keys if stored.get(key)),
+        "",
+    )
+    return environment_value or stored_value, bool(environment_value)
+
+
+def _make_client(payload: dict[str, Any]) -> MetadataClient:
     stored = _load_stored_settings()
-    api_key = os.environ.get("TMDB_API_KEY", "").strip() or str(stored.get("api_key", ""))
-    language = str(payload.get("language") or stored.get("language") or "en-US")
+    provider = _normalize_metadata_provider(
+        payload.get("metadata_provider", stored.get("metadata_provider"))
+    )
+    language = str(payload.get("language") or "en-US")
+    if provider == "thetvdb":
+        api_key, _ = _credential_value(stored, "THETVDB_API_KEY", "thetvdb_api_key")
+        pin, _ = _credential_value(stored, "THETVDB_PIN", "thetvdb_pin")
+        return TheTvdbClient(api_key=api_key, pin=pin, lang=language)
+
+    api_key, _ = _credential_value(stored, "TMDB_API_KEY", "tmdb_api_key", "api_key")
     return TmdbClient(api_key=api_key, lang=language)
 
 

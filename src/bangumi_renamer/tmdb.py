@@ -40,6 +40,8 @@ class Episode:
 
 
 class TmdbClient:
+    provider_name = "TMDB"
+
     def __init__(
         self,
         api_key: str | None = None,

@@ -22,24 +22,32 @@ describe("desktop interface localization", () => {
         );
     });
 
-    it("keeps the main workflow copy concise", () => {
+    it("describes the main workflow phases clearly", () => {
         const t = createTranslator("zh-CN");
 
-        expect(t("workflow.choose")).toBe("文件夹");
-        expect(t("workflow.review")).toBe("匹配");
-        expect(t("workflow.apply")).toBe("应用");
+        expect(t("workflow.choose")).toBe("选择文件夹");
+        expect(t("workflow.review")).toBe("确认匹配");
+        expect(t("workflow.apply")).toBe("重命名完成");
+        expect(t("workspace.rematch")).toBe("重新匹配");
+        expect(t("workspace.chooseOther")).toBe("选择其他文件夹");
         expect(t("footer.previewCount", { count: 75 })).toBe("75 个文件");
         expect(t("footer.apply")).toBe("应用");
     });
 
     it("offers all supported interface languages in desktop settings", () => {
         const settings: DesktopSettings = {
+            metadata_provider: "thetvdb",
             ui_language: "zh-CN",
-            language: "zh-CN",
             conflict_policy: "suffix",
             theme: "system",
             has_api_key: true,
             api_key_from_environment: false,
+            has_thetvdb_api_key: true,
+            thetvdb_api_key_from_environment: false,
+            has_thetvdb_pin: false,
+            thetvdb_pin_from_environment: false,
+            has_tmdb_api_key: false,
+            tmdb_api_key_from_environment: false,
         };
         const html = renderToStaticMarkup(
             createElement(SettingsModal, {

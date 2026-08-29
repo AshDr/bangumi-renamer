@@ -6,12 +6,18 @@ import { resolveTheme } from "./theme";
 import type { DesktopSettings } from "./types";
 
 const settings: DesktopSettings = {
+    metadata_provider: "thetvdb",
     ui_language: "en-US",
-    language: "en-US",
     conflict_policy: "suffix",
     theme: "system",
     has_api_key: true,
     api_key_from_environment: false,
+    has_thetvdb_api_key: true,
+    thetvdb_api_key_from_environment: false,
+    has_thetvdb_pin: false,
+    thetvdb_pin_from_environment: false,
+    has_tmdb_api_key: false,
+    tmdb_api_key_from_environment: false,
 };
 
 describe("desktop theme switching", () => {

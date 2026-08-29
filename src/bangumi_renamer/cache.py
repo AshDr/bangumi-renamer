@@ -1,7 +1,7 @@
 """Tiny JSON file cache with TTL.
 
-Used only for TMDB responses. Not thread-safe, but the CLI runs a single
-process so that is fine. Cache directory lives under platformdirs' user cache
+Used for metadata-provider responses. Not thread-safe, but each bridge or CLI
+process is single-threaded. Cache directory lives under platformdirs' user cache
 (e.g. ``~/Library/Caches/bangumi-renamer`` on macOS).
 """
 

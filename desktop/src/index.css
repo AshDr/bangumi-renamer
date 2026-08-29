@@ -39,7 +39,7 @@ button { color: inherit; }
 
 .brand, .titlebar-actions, .header-actions, .brand-mark, .button, .status-pill,
 .file-cell, .match-cell, .step, .status-banner, .confirm-copy,
-.input-with-icon { display: flex; align-items: center; }
+.input-with-icon, .workspace-language { display: flex; align-items: center; }
 .brand { gap: 10px; color: #f8fafc; font-size: 14px; font-weight: 720; letter-spacing: -0.01em; }
 .brand-mark { justify-content: center; width: 30px; height: 30px; border-radius: 9px; color: #b8f7ef; background: linear-gradient(145deg, #1b8a84, #166079); box-shadow: 0 8px 24px rgba(28, 139, 135, 0.22); }
 .version-pill { padding: 2px 7px; border: 1px solid rgba(148, 163, 184, 0.17); border-radius: 999px; color: #8090a5; font-size: 10px; font-weight: 700; }
@@ -61,10 +61,14 @@ button { color: inherit; }
 
 .content { position: relative; min-width: 0; min-height: 0; padding: 30px 34px 22px; overflow: auto; }
 .content-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; margin-bottom: 24px; }
+.content-header > div:first-child { min-width: 0; }
 .content-header h2 { margin: 7px 0 4px; color: #f2f7fb; font-size: 23px; letter-spacing: -0.025em; }
 .path-label { max-width: 620px; margin: 0; overflow: hidden; color: #63758a; font-family: ui-monospace, monospace; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-.header-actions { gap: 9px; }
-.button { justify-content: center; gap: 8px; min-height: 36px; padding: 0 15px; border: 1px solid transparent; border-radius: 9px; cursor: pointer; font-size: 11px; font-weight: 720; transition: 140ms ease; }
+.header-actions { flex: 0 0 auto; gap: 9px; }
+.workspace-language { flex-shrink: 0; gap: 7px; height: 36px; padding: 0 10px; border: 1px solid rgba(148, 163, 184, 0.16); border-radius: 9px; color: #a9b7c8; background: rgba(148, 163, 184, 0.055); }
+.workspace-language select { min-width: 82px; border: 0; outline: none; color: inherit; cursor: pointer; background: transparent; font-size: 11px; font-weight: 720; }
+.workspace-language select:disabled { cursor: not-allowed; opacity: 0.42; }
+.button { flex-shrink: 0; justify-content: center; gap: 8px; min-height: 36px; padding: 0 15px; border: 1px solid transparent; border-radius: 9px; cursor: pointer; font-size: 11px; font-weight: 720; white-space: nowrap; transition: 140ms ease; }
 .button:disabled { cursor: not-allowed; opacity: 0.42; }
 .button.primary { color: #06211f; background: #53d5c5; box-shadow: 0 9px 30px rgba(45, 212, 191, 0.15); }
 .button.primary:hover:not(:disabled) { background: #6ce4d6; transform: translateY(-1px); }
@@ -192,6 +196,7 @@ tbody tr:hover { background: rgba(65, 158, 164, 0.045); }
 }
 .button.secondary { color: #454545; border-color: #d7d7d7; background: #ffffff; }
 .button.secondary:hover:not(:disabled) { color: #171717; background: #f4f4f4; }
+.workspace-language { color: #454545; border-color: #d7d7d7; background: #ffffff; }
 
 .drop-zone { color: #777777; border-color: #c9c9c6; background: #fafaf9; }
 .drop-zone:hover { border-color: #8e8e89; background: #f5f5f3; }
@@ -274,6 +279,7 @@ tbody tr:hover { background: #fafaf8; }
 [data-theme="dark"] .button.apply:hover:not(:disabled) { background: #ffffff; }
 [data-theme="dark"] .button.secondary { color: #d0d0cc; border-color: #444442; background: #222222; }
 [data-theme="dark"] .button.secondary:hover:not(:disabled) { color: #ffffff; background: #2d2d2c; }
+[data-theme="dark"] .workspace-language { color: #d0d0cc; border-color: #444442; background: #222222; }
 
 [data-theme="dark"] .drop-zone { color: #aaa9a4; border-color: #4b4b48; background: #1a1a1a; }
 [data-theme="dark"] .drop-zone:hover { border-color: #73736e; background: #20201f; }
@@ -344,6 +350,8 @@ tbody tr:hover { background: #fafaf8; }
     .sidebar { padding-left: 23px; padding-right: 23px; }
     .apply-bar { padding-left: 256px; }
     .content { padding-left: 26px; padding-right: 26px; }
+    .content-header { align-items: stretch; flex-direction: column; gap: 14px; }
+    .header-actions { justify-content: flex-end; }
     th:nth-child(3), td:nth-child(3) { display: none; }
     th:nth-child(1) { width: 32%; } th:nth-child(2) { width: 38%; } th:nth-child(4) { width: 18%; }
 }

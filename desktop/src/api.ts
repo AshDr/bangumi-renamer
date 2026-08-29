@@ -5,6 +5,7 @@ import type {
     ApplyResult,
     Candidate,
     DesktopSettings,
+    MetadataLanguage,
     PlanItem,
     ScanResult,
 } from "./types";
@@ -30,26 +31,30 @@ export const desktopApi = {
     getSettings: () => bridge<DesktopSettings>("settings.get"),
     saveSettings: (payload: Record<string, unknown>) =>
         bridge<DesktopSettings>("settings.save", payload),
-    scan: (path: string, settings: DesktopSettings) =>
+    scan: (path: string, settings: DesktopSettings, language: MetadataLanguage) =>
         bridge<ScanResult>("plan.scan", {
             path,
-            language: settings.language,
+            metadata_provider: settings.metadata_provider,
+            language,
             conflict_policy: settings.conflict_policy,
         }),
-    candidates: (query: string, settings: DesktopSettings) =>
+    candidates: (query: string, settings: DesktopSettings, language: MetadataLanguage) =>
         bridge<{ candidates: Candidate[] }>("plan.candidates", {
             query,
-            language: settings.language,
+            metadata_provider: settings.metadata_provider,
+            language,
         }),
     rebuild: (
         sources: string[],
-        tmdbId: number,
+        providerId: number,
         settings: DesktopSettings,
+        language: MetadataLanguage,
     ) =>
         bridge<{ items: PlanItem[] }>("plan.rebuild", {
             sources,
-            tmdb_id: tmdbId,
-            language: settings.language,
+            provider_id: providerId,
+            metadata_provider: settings.metadata_provider,
+            language,
             conflict_policy: settings.conflict_policy,
         }),
     apply: (root: string, items: PlanItem[]) =>
@@ -63,12 +68,18 @@ export const desktopApi = {
 
 function previewBridge(command: string, payload: Record<string, unknown>): unknown {
     const settings: DesktopSettings = {
+        metadata_provider: (payload.metadata_provider as DesktopSettings["metadata_provider"]) || "thetvdb",
         ui_language: (payload.ui_language as DesktopSettings["ui_language"]) || "en-US",
-        language: String(payload.language || "en-US"),
         conflict_policy: (payload.conflict_policy as DesktopSettings["conflict_policy"]) || "suffix",
         theme: (payload.theme as DesktopSettings["theme"]) || "system",
         has_api_key: true,
         api_key_from_environment: false,
+        has_thetvdb_api_key: true,
+        thetvdb_api_key_from_environment: false,
+        has_thetvdb_pin: false,
+        thetvdb_pin_from_environment: false,
+        has_tmdb_api_key: true,
+        tmdb_api_key_from_environment: false,
     };
     if (command === "settings.get" || command === "settings.save") return settings;
     if (command === "plan.scan") return { root: String(payload.path), items: previewItems };
@@ -131,7 +142,7 @@ const previewItems: PlanItem[] = [
         target: null,
         target_name: null,
         status: "no season",
-        detail: "Season 2 was not found on TMDB. Choose another match.",
+        detail: "Season 2 was not found on TheTVDB. Choose another match.",
         parsed: { title: "Mystery Show 2nd Season", season: 2, episode: 5, year: null },
         match: { tmdb_id: 95479, name: "Mystery Show", confidence: 89, reason: "preview" },
     },

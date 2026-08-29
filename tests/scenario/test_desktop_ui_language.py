@@ -14,17 +14,17 @@ def _isolate_settings(tmp_path: Path, monkeypatch) -> Path:
     return config_path
 
 
-def test_ui_language_round_trip_is_independent_from_metadata_language(
+def test_ui_language_round_trips_without_global_metadata_language(
     tmp_path: Path, monkeypatch
 ) -> None:
     config_path = _isolate_settings(tmp_path, monkeypatch)
 
     settings = desktop_bridge.save_settings(
-        {"ui_language": "ja-JP", "language": "zh-CN", "conflict_policy": "suffix"}
+        {"ui_language": "ja-JP", "conflict_policy": "suffix"}
     )
 
     assert settings["ui_language"] == "ja-JP"
-    assert settings["language"] == "zh-CN"
+    assert "language" not in settings
     assert json.loads(config_path.read_text(encoding="utf-8"))["ui_language"] == "ja-JP"
 
 

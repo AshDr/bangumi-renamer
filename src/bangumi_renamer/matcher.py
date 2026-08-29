@@ -1,4 +1,4 @@
-"""Pick the best TMDB TV result for a parsed filename.
+"""Pick the best TV result returned by a metadata provider.
 
 Scoring: rapidfuzz ``WRatio`` (case-insensitive) against both ``name`` and
 ``original_name``, take the max. ``WRatio`` is the right choice here because
@@ -14,7 +14,8 @@ from dataclasses import dataclass
 
 from rapidfuzz import fuzz
 
-from .tmdb import TmdbClient, TmdbError, TvSearchResult
+from .metadata import MetadataClient
+from .tmdb import TmdbError, TvSearchResult
 
 MIN_CONFIDENCE = 75.0
 YEAR_BONUS = 15.0
@@ -34,7 +35,7 @@ class MatchResult:
 
 @dataclass(frozen=True, slots=True)
 class ScoredCandidate:
-    """A TMDB TV search hit annotated with our confidence score.
+    """A provider TV search hit annotated with our confidence score.
 
     Used by the GUI's "Pick different match" dialog, where the user needs to
     see every candidate — not just the winner — to pick the right one.
@@ -70,13 +71,13 @@ def _score_candidate(
 def search_candidates(
     title: str,
     *,
-    client: TmdbClient,
+    client: MetadataClient,
     hint_year: int | None = None,
 ) -> list[ScoredCandidate]:
-    """Return every TMDB candidate for ``title``, scored and sorted descending.
+    """Return every provider candidate for ``title``, scored and sorted descending.
 
     Never raises on low scores — that's the caller's policy. Returns an empty
-    list when TMDB has no results for the query.
+    list when the provider has no results for the query.
     """
     hits = client.search_tv(title, year=hint_year)
     scored: list[ScoredCandidate] = []
@@ -100,13 +101,13 @@ def search_candidates(
 def match(
     title: str,
     *,
-    client: TmdbClient,
+    client: MetadataClient,
     hint_year: int | None = None,
 ) -> MatchResult:
-    """Search TMDB for `title` and pick the best candidate, or raise MatchError."""
+    """Search the provider for `title` and pick the best candidate."""
     candidates = search_candidates(title, client=client, hint_year=hint_year)
     if not candidates:
-        raise MatchError(f"TMDB returned no results for {title!r}")
+        raise MatchError(f"{client.provider_name} returned no results for {title!r}")
 
     best = candidates[0]
     if best.confidence < MIN_CONFIDENCE:
@@ -121,11 +122,18 @@ def match(
     )
 
 
-def force_match(tmdb_id: int, *, client: TmdbClient) -> MatchResult:
-    """Bypass the matcher: validate ``tmdb_id`` by fetching it and return a MatchResult."""
+def force_match(tmdb_id: int, *, client: MetadataClient) -> MatchResult:
+    """Bypass fuzzy matching by validating a provider-specific series id."""
     try:
         data = client.get_tv(tmdb_id)
     except TmdbError as exc:
-        raise MatchError(f"--tmdb-id {tmdb_id} is not a valid TMDB TV id: {exc}") from exc
-    name = (data.get("name") or data.get("original_name") or f"tmdb:{tmdb_id}").strip()
+        if client.provider_name == "TMDB":
+            raise MatchError(
+                f"--tmdb-id {tmdb_id} is not a valid TMDB TV id: {exc}"
+            ) from exc
+        raise MatchError(
+            f"{tmdb_id} is not a valid {client.provider_name} series id: {exc}"
+        ) from exc
+    fallback = f"tmdb:{tmdb_id}" if client.provider_name == "TMDB" else f"thetvdb:{tmdb_id}"
+    name = (data.get("name") or data.get("original_name") or fallback).strip()
     return MatchResult(tmdb_id=tmdb_id, name=name, confidence=100.0, reason="manual override")

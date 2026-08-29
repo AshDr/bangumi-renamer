@@ -7,6 +7,7 @@ import {
     FilePenLine,
     FolderOpen,
     KeyRound,
+    Languages,
     LoaderCircle,
     RefreshCw,
     Search,
@@ -21,16 +22,40 @@ import { createTranslator, supportedUiLocales } from "./i18n";
 import type { Translator } from "./i18n";
 import { actionableItems, rowsForMatch, summarize, titlebarClassName } from "./lib";
 import { watchThemePreference } from "./theme";
-import type { Candidate, DesktopSettings, PlanItem, UiLocale } from "./types";
+import {
+    nextWorkflowPhase,
+    showMetadataLanguage,
+    workflowActionKeys,
+    workflowStepStates,
+} from "./workflow";
+import type { WorkflowPhase } from "./workflow";
+import type {
+    Candidate,
+    DesktopSettings,
+    MetadataLanguage,
+    MetadataProvider,
+    PlanItem,
+    UiLocale,
+} from "./types";
 
 const defaultSettings: DesktopSettings = {
+    metadata_provider: "thetvdb",
     ui_language: "en-US",
-    language: "en-US",
     conflict_policy: "suffix",
     theme: "system",
     has_api_key: false,
     api_key_from_environment: false,
+    has_thetvdb_api_key: false,
+    thetvdb_api_key_from_environment: false,
+    has_thetvdb_pin: false,
+    thetvdb_pin_from_environment: false,
+    has_tmdb_api_key: false,
+    tmdb_api_key_from_environment: false,
 };
+
+function providerName(provider: MetadataProvider): string {
+    return provider === "thetvdb" ? "TheTVDB" : "TMDB";
+}
 
 type BusyState = "idle" | "scanning" | "matching" | "applying";
 
@@ -47,6 +72,7 @@ export default function App() {
     const [settings, setSettings] = useState<DesktopSettings>(defaultSettings);
     const [root, setRoot] = useState<string | null>(null);
     const [items, setItems] = useState<PlanItem[]>([]);
+    const [workflowPhase, setWorkflowPhase] = useState<WorkflowPhase>("select");
     const [busy, setBusy] = useState<BusyState>("idle");
     const [error, setError] = useState<string | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
@@ -55,11 +81,23 @@ export default function App() {
     const [confirmApply, setConfirmApply] = useState(false);
     const [previewTheme, setPreviewTheme] = useState<DesktopSettings["theme"] | null>(null);
     const [previewLanguage, setPreviewLanguage] = useState<UiLocale | null>(null);
+    const [folderMetadataLanguages, setFolderMetadataLanguages] = useState<
+        Record<string, MetadataLanguage>
+    >({});
 
     const counts = useMemo(() => summarize(items), [items]);
     const actionable = useMemo(() => actionableItems(items), [items]);
     const uiLanguage = previewLanguage || settings.ui_language;
     const t = useMemo(() => createTranslator(uiLanguage), [uiLanguage]);
+    const activeProviderName = providerName(settings.metadata_provider);
+    const activeMetadataLanguage = metadataLanguageForFolder(
+        folderMetadataLanguages,
+        root,
+        settings.ui_language,
+    );
+    const workflowSteps = workflowStepStates(workflowPhase);
+    const actionKeys = workflowActionKeys(workflowPhase);
+    const metadataLanguageVisible = showMetadataLanguage(workflowPhase);
 
     useLayoutEffect(
         () => watchThemePreference(previewTheme || settings.theme),
@@ -81,18 +119,28 @@ export default function App() {
     }, []);
 
     const scanPath = useCallback(
-        async (path: string) => {
+        async (path: string, language?: MetadataLanguage) => {
             if (!settings.has_api_key) {
                 setSettingsOpen(true);
-                setError(t("notice.apiKeyRequired"));
+                setError(t("notice.apiKeyRequired", { provider: activeProviderName }));
                 return;
             }
+            setWorkflowPhase((current) => nextWorkflowPhase(current, "scanStarted"));
             setBusy("scanning");
             setError(null);
             setNotice(null);
+            const workspaceLanguage = language || metadataLanguageForFolder(
+                folderMetadataLanguages,
+                path,
+                settings.ui_language,
+            );
             try {
-                const result = await desktopApi.scan(path, settings);
+                const result = await desktopApi.scan(path, settings, workspaceLanguage);
                 setRoot(result.root);
+                setFolderMetadataLanguages((current) => ({
+                    ...current,
+                    [result.root]: workspaceLanguage,
+                }));
                 setItems(result.items);
                 setNotice(
                     result.items.length
@@ -105,7 +153,7 @@ export default function App() {
                 setBusy("idle");
             }
         },
-        [settings, t],
+        [activeProviderName, folderMetadataLanguages, settings, t],
     );
 
     useEffect(() => {
@@ -134,6 +182,12 @@ export default function App() {
         }
     }
 
+    async function changeMetadataLanguage(language: MetadataLanguage) {
+        if (!root) return;
+        setFolderMetadataLanguages((current) => ({ ...current, [root]: language }));
+        await scanPath(root, language);
+    }
+
     async function applyPlan() {
         if (!root || actionable.length === 0) return;
         setConfirmApply(false);
@@ -146,9 +200,10 @@ export default function App() {
                     ? t("notice.renamed", { count: result.renamed, path: result.history_path })
                     : t("notice.noRename"),
             );
-            await scanPath(root);
+            setWorkflowPhase((current) => nextWorkflowPhase(current, "applySucceeded"));
         } catch (reason) {
             setError(errorText(reason));
+        } finally {
             setBusy("idle");
         }
     }
@@ -163,6 +218,7 @@ export default function App() {
                 related.map((item) => item.source),
                 candidate.tmdb_id,
                 settings,
+                activeMetadataLanguage,
             );
             const replacements = new Map(result.items.map((item) => [item.source, item]));
             setItems((current) => current.map((item) => replacements.get(item.source) || item));
@@ -196,9 +252,9 @@ export default function App() {
             <main className="workspace">
                 <aside className="sidebar">
                     <nav className="steps" aria-label={t("workflow.label")}>
-                        <Step number="01" label={t("workflow.choose")} active={!root} done={Boolean(root)} />
-                        <Step number="02" label={t("workflow.review")} active={Boolean(root)} done={items.length > 0} />
-                        <Step number="03" label={t("workflow.apply")} active={actionable.length > 0} done={false} />
+                        <Step number="01" label={t("workflow.choose")} {...workflowSteps[0]} />
+                        <Step number="02" label={t("workflow.review")} {...workflowSteps[1]} />
+                        <Step number="03" label={t("workflow.apply")} {...workflowSteps[2]} />
                     </nav>
                 </aside>
 
@@ -210,12 +266,22 @@ export default function App() {
                         </div>
                         <div className="header-actions">
                             {root && (
-                                <button className="button secondary" disabled={busy !== "idle"} onClick={() => void scanPath(root)}>
-                                    <RefreshCw size={16} /> {t("workspace.rescan")}
-                                </button>
+                                <>
+                                    {metadataLanguageVisible && (
+                                        <WorkspaceMetadataLanguageSelect
+                                            value={activeMetadataLanguage}
+                                            busy={busy !== "idle"}
+                                            onChange={(language) => void changeMetadataLanguage(language)}
+                                            t={t}
+                                        />
+                                    )}
+                                    <button className="button secondary" disabled={busy !== "idle"} onClick={() => void scanPath(root)}>
+                                        <RefreshCw size={16} /> {t(actionKeys.rematch)}
+                                    </button>
+                                </>
                             )}
                             <button className="button primary" disabled={busy !== "idle"} onClick={() => void chooseFolder()}>
-                                <FolderOpen size={17} /> {t("workspace.choose")}
+                                <FolderOpen size={17} /> {t(actionKeys.chooseFolder)}
                             </button>
                         </div>
                     </div>
@@ -238,13 +304,13 @@ export default function App() {
                         ) : (
                             <motion.div key="plan" className="plan-area" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                                 <SummaryStrip total={items.length} counts={counts} actionable={actionable.length} t={t} />
-                                <PlanTable items={items} busy={busy !== "idle"} onPickMatch={setMatchRow} uiLocale={uiLanguage} />
+                                <PlanTable items={items} busy={busy !== "idle" || workflowPhase === "complete"} onPickMatch={setMatchRow} uiLocale={uiLanguage} />
                             </motion.div>
                         )}
                     </AnimatePresence>
 
                     {(error || notice || busy !== "idle") && (
-                        <StatusBanner busy={busy} error={error} notice={notice} onClose={() => { setError(null); setNotice(null); }} t={t} />
+                        <StatusBanner busy={busy} error={error} notice={notice} onClose={() => { setError(null); setNotice(null); }} providerName={activeProviderName} t={t} />
                     )}
                 </section>
             </main>
@@ -252,12 +318,14 @@ export default function App() {
             <footer className="apply-bar">
                 <div>
                     <span className={`api-dot ${settings.has_api_key ? "ready" : ""}`} />
-                    {settings.has_api_key ? t("footer.connected") : t("footer.keyRequired")}
+                    {settings.has_api_key
+                        ? t("footer.connected", { provider: activeProviderName })
+                        : t("footer.keyRequired", { provider: activeProviderName })}
                     {root && <><span className="footer-separator" />{t("footer.previewCount", { count: items.length })}</>}
                 </div>
                 <button
                     className="button apply"
-                    disabled={!root || actionable.length === 0 || busy !== "idle"}
+                    disabled={!root || actionable.length === 0 || busy !== "idle" || workflowPhase === "complete"}
                     onClick={() => setConfirmApply(true)}
                 >
                     <Check size={17} /> {t("footer.apply")}
@@ -281,6 +349,8 @@ export default function App() {
                         settings={settings}
                         onClose={() => setMatchRow(null)}
                         onSelect={(candidate) => void applyCandidate(candidate)}
+                        providerName={activeProviderName}
+                        metadataLanguage={activeMetadataLanguage}
                         t={t}
                     />
                 )}
@@ -299,6 +369,42 @@ function Step({ number, label, active, done }: { number: string; label: string; 
             <strong>{label}</strong>
             <ChevronRight size={15} />
         </div>
+    );
+}
+
+export function metadataLanguageForFolder(
+    choices: Record<string, MetadataLanguage>,
+    root: string | null,
+    uiLocale: UiLocale,
+): MetadataLanguage {
+    return root ? choices[root] || uiLocale : uiLocale;
+}
+
+export function WorkspaceMetadataLanguageSelect({
+    value,
+    busy,
+    onChange,
+    t,
+}: {
+    value: MetadataLanguage;
+    busy: boolean;
+    onChange: (language: MetadataLanguage) => void;
+    t: Translator;
+}) {
+    return (
+        <label className="workspace-language" title={t("settings.metadataLanguage")}>
+            <Languages size={16} />
+            <select
+                aria-label={t("settings.metadataLanguage")}
+                value={value}
+                disabled={busy}
+                onChange={(event) => onChange(event.target.value as MetadataLanguage)}
+            >
+                {supportedUiLocales.map((locale) => (
+                    <option key={locale} value={locale}>{t(`locale.${locale}`)}</option>
+                ))}
+            </select>
+        </label>
     );
 }
 
@@ -349,8 +455,8 @@ function StatusPill({ status, t }: { status: string; t: Translator }) {
     return <span className={`status-pill ${ok ? "ok" : "warn"}`}>{ok ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}{label}</span>;
 }
 
-function StatusBanner({ busy, error, notice, onClose, t }: { busy: BusyState; error: string | null; notice: string | null; onClose: () => void; t: Translator }) {
-    const labels: Record<BusyState, string> = { idle: "", scanning: t("busy.scanning"), matching: t("busy.matching"), applying: t("busy.applying") };
+function StatusBanner({ busy, error, notice, onClose, providerName, t }: { busy: BusyState; error: string | null; notice: string | null; onClose: () => void; providerName: string; t: Translator }) {
+    const labels: Record<BusyState, string> = { idle: "", scanning: t("busy.scanning", { provider: providerName }), matching: t("busy.matching"), applying: t("busy.applying") };
     return (
         <motion.div className={`status-banner ${error ? "error" : ""}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
             {busy !== "idle" ? <LoaderCircle className="spin" size={17} /> : error ? <AlertCircle size={17} /> : <CheckCircle2 size={17} />}
@@ -388,8 +494,10 @@ export function SettingsModal({
     onThemePreview,
     onLanguagePreview,
 }: SettingsModalProps) {
-    const [apiKey, setApiKey] = useState("");
-    const [language, setLanguage] = useState(settings.language);
+    const [metadataProvider, setMetadataProvider] = useState(settings.metadata_provider);
+    const [tmdbApiKey, setTmdbApiKey] = useState("");
+    const [thetvdbApiKey, setThetvdbApiKey] = useState("");
+    const [thetvdbPin, setThetvdbPin] = useState("");
     const [uiLanguage, setUiLanguage] = useState(settings.ui_language);
     const [policy, setPolicy] = useState(settings.conflict_policy);
     const [theme, setTheme] = useState(settings.theme);
@@ -409,7 +517,15 @@ export function SettingsModal({
     async function save() {
         setSaving(true);
         try {
-            const value = await desktopApi.saveSettings({ api_key: apiKey, ui_language: uiLanguage, language, conflict_policy: policy, theme });
+            const value = await desktopApi.saveSettings({
+                metadata_provider: metadataProvider,
+                tmdb_api_key: tmdbApiKey,
+                thetvdb_api_key: thetvdbApiKey,
+                thetvdb_pin: thetvdbPin,
+                ui_language: uiLanguage,
+                conflict_policy: policy,
+                theme,
+            });
             onSaved(value);
         } catch (reason) {
             onError(errorText(reason));
@@ -420,7 +536,21 @@ export function SettingsModal({
     return (
         <ModalFrame title={t("settings.title")} subtitle={t("settings.subtitle")} onClose={onClose} closeLabel={t("common.close")}>
             <div className="form-stack">
-                <label><span>{t("settings.apiKey")}</span><div className="input-with-icon"><KeyRound size={16} /><input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder={settings.has_api_key ? t("settings.savedKey") : t("settings.newKey")} /></div>{settings.api_key_from_environment && <small>{t("settings.environmentKey")}</small>}</label>
+                <label>
+                    <span>{t("settings.metadataProvider")}</span>
+                    <select value={metadataProvider} onChange={(event) => setMetadataProvider(event.target.value as MetadataProvider)}>
+                        <option value="thetvdb">{t("provider.thetvdb")}</option>
+                        <option value="tmdb">{t("provider.tmdb")}</option>
+                    </select>
+                </label>
+                {metadataProvider === "thetvdb" ? (
+                    <>
+                        <label><span>{t("settings.thetvdbApiKey")}</span><div className="input-with-icon"><KeyRound size={16} /><input type="password" value={thetvdbApiKey} onChange={(event) => setThetvdbApiKey(event.target.value)} placeholder={settings.has_thetvdb_api_key ? t("settings.savedKey") : t("settings.newThetvdbKey")} /></div>{settings.thetvdb_api_key_from_environment && <small>{t("settings.environmentCredential", { name: "THETVDB_API_KEY" })}</small>}</label>
+                        <label><span>{t("settings.thetvdbPin")}</span><div className="input-with-icon"><KeyRound size={16} /><input type="password" value={thetvdbPin} onChange={(event) => setThetvdbPin(event.target.value)} placeholder={settings.has_thetvdb_pin ? t("settings.savedPin") : t("settings.newThetvdbPin")} /></div>{settings.thetvdb_pin_from_environment && <small>{t("settings.environmentCredential", { name: "THETVDB_PIN" })}</small>}</label>
+                    </>
+                ) : (
+                    <label><span>{t("settings.tmdbApiKey")}</span><div className="input-with-icon"><KeyRound size={16} /><input type="password" value={tmdbApiKey} onChange={(event) => setTmdbApiKey(event.target.value)} placeholder={settings.has_tmdb_api_key ? t("settings.savedKey") : t("settings.newTmdbKey")} /></div>{settings.tmdb_api_key_from_environment && <small>{t("settings.environmentCredential", { name: "TMDB_API_KEY" })}</small>}</label>
+                )}
                 <label>
                     <span>{t("settings.uiLanguage")}</span>
                     <select value={uiLanguage} onChange={(event) => changeLanguage(event.target.value as UiLocale)}>
@@ -429,7 +559,6 @@ export function SettingsModal({
                         ))}
                     </select>
                 </label>
-                <label><span>{t("settings.metadataLanguage")}</span><input value={language} onChange={(event) => setLanguage(event.target.value)} placeholder={t("settings.metadataPlaceholder")} /></label>
                 <label><span>{t("settings.conflict")}</span><select value={policy} onChange={(event) => setPolicy(event.target.value as DesktopSettings["conflict_policy"])}><option value="suffix">{t("settings.conflictSuffix")}</option><option value="skip">{t("settings.conflictSkip")}</option><option value="overwrite">{t("settings.conflictOverwrite")}</option></select></label>
                 <label>
                     <span>{t("settings.appearance")}</span>
@@ -448,18 +577,18 @@ export function SettingsModal({
     );
 }
 
-function CandidateModal({ row, settings, onClose, onSelect, t }: { row: PlanItem; settings: DesktopSettings; onClose: () => void; onSelect: (candidate: Candidate) => void; t: Translator }) {
+function CandidateModal({ row, settings, onClose, onSelect, providerName, metadataLanguage, t }: { row: PlanItem; settings: DesktopSettings; onClose: () => void; onSelect: (candidate: Candidate) => void; providerName: string; metadataLanguage: MetadataLanguage; t: Translator }) {
     const [candidates, setCandidates] = useState<Candidate[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     useEffect(() => {
         if (!row.parsed) return;
-        desktopApi.candidates(row.parsed.title, settings).then((value) => setCandidates(value.candidates)).catch((reason: unknown) => setError(errorText(reason))).finally(() => setLoading(false));
-    }, [row, settings]);
+        desktopApi.candidates(row.parsed.title, settings, metadataLanguage).then((value) => setCandidates(value.candidates)).catch((reason: unknown) => setError(errorText(reason))).finally(() => setLoading(false));
+    }, [metadataLanguage, row, settings]);
     return (
-        <ModalFrame title={t("candidate.title")} subtitle={row.parsed?.title || row.source_name} onClose={onClose} closeLabel={t("common.close")}>
+        <ModalFrame title={t("candidate.title", { provider: providerName })} subtitle={row.parsed?.title || row.source_name} onClose={onClose} closeLabel={t("common.close")}>
             <div className="candidate-list">
-                {loading && <div className="modal-state"><LoaderCircle className="spin" /><span>{t("candidate.searching")}</span></div>}
+                {loading && <div className="modal-state"><LoaderCircle className="spin" /><span>{t("candidate.searching", { provider: providerName })}</span></div>}
                 {error && <div className="modal-state error-text"><AlertCircle /><span>{error}</span></div>}
                 {!loading && !error && !candidates.length && <div className="modal-state"><Search /><span>{t("candidate.empty")}</span></div>}
                 {candidates.map((candidate) => (
