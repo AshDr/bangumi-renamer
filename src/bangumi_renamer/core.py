@@ -180,7 +180,11 @@ def _build_plan_item(
     if target == source:
         return PlanItem(source, parsed, match_result, target, "OK", detail="no-op")
 
-    resolved = resolve_conflict(target, on_conflict=on_conflict)
+    resolved = resolve_conflict(
+        target,
+        on_conflict=on_conflict,
+        extension=parsed.extension,
+    )
     if resolved is None or resolved in planned_targets:
         return PlanItem(
             source,

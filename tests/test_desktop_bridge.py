@@ -50,6 +50,25 @@ def test_apply_rejects_target_outside_selected_root(tmp_path: Path) -> None:
         )
 
 
+def test_apply_rejects_changed_compound_subtitle_extension(tmp_path: Path) -> None:
+    source = tmp_path / "Episode 01.chs.ass"
+    source.touch()
+
+    with pytest.raises(ValueError, match="preserve the source extension"):
+        desktop_bridge.apply_items(
+            {
+                "root": str(tmp_path),
+                "items": [
+                    {
+                        "source": str(source),
+                        "target": str(tmp_path / "Episode S01E01.cht.ass"),
+                        "status": "OK",
+                    }
+                ],
+            }
+        )
+
+
 def test_dispatch_rejects_unknown_command() -> None:
     with pytest.raises(ValueError, match="Unsupported desktop command"):
         desktop_bridge.dispatch("system.shell", {})

@@ -22,6 +22,16 @@ describe("desktop interface localization", () => {
         );
     });
 
+    it("keeps the main workflow copy concise", () => {
+        const t = createTranslator("zh-CN");
+
+        expect(t("workflow.choose")).toBe("文件夹");
+        expect(t("workflow.review")).toBe("匹配");
+        expect(t("workflow.apply")).toBe("应用");
+        expect(t("footer.previewCount", { count: 75 })).toBe("75 个文件");
+        expect(t("footer.apply")).toBe("应用");
+    });
+
     it("offers all supported interface languages in desktop settings", () => {
         const settings: DesktopSettings = {
             ui_language: "zh-CN",

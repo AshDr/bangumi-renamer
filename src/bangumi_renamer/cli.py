@@ -22,7 +22,7 @@ from .tmdb import TmdbClient, TmdbError
 
 app = typer.Typer(
     name="bangumi-renamer",
-    help="Rename anime/TV episode files using TMDB metadata.",
+    help="Rename anime/TV episode videos and external subtitles using TMDB metadata.",
     no_args_is_help=True,
     add_completion=False,
 )
@@ -146,7 +146,7 @@ def rename(
     ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose logging."),
 ) -> None:
-    """Rename video files in PATH based on TMDB metadata.
+    """Rename episode videos and external subtitles in PATH based on TMDB metadata.
 
     Examples:
       bangumi-renamer ~/Videos/anime
@@ -172,7 +172,7 @@ def rename(
         )
         files = scan(path)
         if not files:
-            stderr_console.print("[yellow]No video files found.[/]")
+            stderr_console.print("[yellow]No video files or supported subtitle files found.[/]")
             raise typer.Exit(code=0)
 
         client = TmdbClient(lang=lang)

@@ -8,6 +8,8 @@ from pathlib import Path
 
 import anitopy
 
+from .scanner import SUBTITLE_EXTENSIONS
+
 _WHITESPACE_RE = re.compile(r"\s+")
 _DECIMAL_NUMBER = r"[0-9０-９]"
 # Fallback markers are anchored so numbers inside a title are not treated as episodes.
@@ -29,6 +31,67 @@ _SEASON_MARKER_PATTERNS = (
         rf"^(?P<title>.+?)\s+Season\s*(?P<season>{_DECIMAL_NUMBER}{{1,3}})\s*$",
         re.IGNORECASE,
     ),
+)
+
+# Tags commonly inserted between an episode stem and its subtitle container suffix.
+_SUBTITLE_SUFFIX_TAGS = frozenset(
+    {
+        "ar",
+        "ara",
+        "cc",
+        "chi",
+        "chs",
+        "cht",
+        "commentary",
+        "de",
+        "default",
+        "deu",
+        "en",
+        "en-gb",
+        "en-us",
+        "eng",
+        "es",
+        "forced",
+        "fr",
+        "fra",
+        "fre",
+        "ger",
+        "id",
+        "ind",
+        "it",
+        "ita",
+        "ja",
+        "jp",
+        "jpn",
+        "ko",
+        "kor",
+        "may",
+        "ms",
+        "msa",
+        "por",
+        "pt",
+        "pt-br",
+        "ru",
+        "rus",
+        "sc",
+        "sdh",
+        "signs",
+        "songs",
+        "spa",
+        "tc",
+        "th",
+        "tha",
+        "vi",
+        "vie",
+        "zh",
+        "zh-cn",
+        "zh-hans",
+        "zh-hant",
+        "zh-hk",
+        "zh-sg",
+        "zh-tw",
+        "zho",
+    }
 )
 
 
@@ -89,6 +152,21 @@ def _extract_fallback_markers(title: str) -> tuple[str, int | None, int | None]:
     return title, None, None
 
 
+def extract_media_extension(path: Path, anitopy_extension: str | None = None) -> str:
+    """Return the format suffix, including recognized external subtitle tags."""
+    extension = (anitopy_extension or path.suffix.lstrip(".")).lower()
+    if path.suffix.lower() not in SUBTITLE_EXTENSIONS:
+        return extension
+
+    suffix_parts = [path.suffix.lstrip(".").lower()]
+    for suffix in reversed(path.suffixes[:-1]):
+        tag = suffix.lstrip(".").lower()
+        if tag not in _SUBTITLE_SUFFIX_TAGS:
+            break
+        suffix_parts.insert(0, tag)
+    return ".".join(suffix_parts)
+
+
 def parse(path: str | Path) -> ParsedFile:
     """Parse a single video filename.
 
@@ -126,6 +204,6 @@ def parse(path: str | Path) -> ParsedFile:
         episode=episode,
         is_special=is_special,
         release_group=raw.get("release_group"),
-        extension=(raw.get("file_extension") or p.suffix.lstrip(".")).lower(),
+        extension=extract_media_extension(p, raw.get("file_extension")),
         year=year,
     )

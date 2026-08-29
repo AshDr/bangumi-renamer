@@ -195,31 +195,16 @@ export default function App() {
 
             <main className="workspace">
                 <aside className="sidebar">
-                    <div className="sidebar-copy">
-                        <span className="eyebrow">{t("sidebar.eyebrow")}</span>
-                        <h1>{t("sidebar.heading")}</h1>
-                        <p>{t("sidebar.description")}</p>
-                    </div>
-
                     <nav className="steps" aria-label={t("workflow.label")}>
                         <Step number="01" label={t("workflow.choose")} active={!root} done={Boolean(root)} />
                         <Step number="02" label={t("workflow.review")} active={Boolean(root)} done={items.length > 0} />
                         <Step number="03" label={t("workflow.apply")} active={actionable.length > 0} done={false} />
                     </nav>
-
-                    <div className="safety-card">
-                        <ShieldCheck size={20} />
-                        <div>
-                            <strong>{t("safety.title")}</strong>
-                            <span>{t("safety.description")}</span>
-                        </div>
-                    </div>
                 </aside>
 
                 <section className="content">
                     <div className="content-header">
                         <div>
-                            <span className="eyebrow">{t("workspace.eyebrow")}</span>
                             <h2>{root ? lastPathPart(root) : t("workspace.select")}</h2>
                             <p className="path-label">{root || t("workspace.hint")}</p>
                         </div>
@@ -275,9 +260,7 @@ export default function App() {
                     disabled={!root || actionable.length === 0 || busy !== "idle"}
                     onClick={() => setConfirmApply(true)}
                 >
-                    <Check size={17} /> {actionable.length === 1
-                        ? t("footer.applyOne")
-                        : t("footer.apply", { count: actionable.length || "" })}
+                    <Check size={17} /> {t("footer.apply")}
                 </button>
             </footer>
 
