@@ -72,9 +72,9 @@ def test_build_plan_reuses_match_and_season_cache(monkeypatch, tmp_path: Path) -
     assert match_calls == ["Frieren"]
     assert client.season_calls == [(209867, 1)]
     assert plan[0].target is not None
-    assert plan[0].target.name == "Frieren - S01E01 - The Journey's End.mkv"
+    assert plan[0].target.name == "Frieren-S01E01.mkv"
     assert plan[1].target is not None
-    assert plan[1].target.name == "Frieren - S01E02 - A Great Mage.mkv"
+    assert plan[1].target.name == "Frieren-S01E02.mkv"
 
 
 def test_build_plan_marks_duplicate_planned_target_as_conflict(
@@ -105,8 +105,8 @@ def test_build_plan_marks_duplicate_planned_target_as_conflict(
 
     assert plan[0].status == "OK"
     assert plan[0].target is not None
-    assert plan[0].target.name == "Same Show - S01E01 - Pilot.mkv"
+    assert plan[0].target.name == "Same Show-S01E01.mkv"
     assert plan[1].status == "conflict"
     assert plan[1].target is not None
-    assert plan[1].target.name == "Same Show - S01E01 - Pilot.mkv"
-    assert plan[1].detail == "target exists: Same Show - S01E01 - Pilot.mkv"
+    assert plan[1].target.name == "Same Show-S01E01.mkv"
+    assert plan[1].detail == "target exists: Same Show-S01E01.mkv"

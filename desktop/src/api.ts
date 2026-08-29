@@ -108,8 +108,8 @@ const previewItems: PlanItem[] = [
     {
         source: "/Preview/Anime Library/[SubsPlease] Frieren - 01 (1080p).mkv",
         source_name: "[SubsPlease] Frieren - 01 (1080p).mkv",
-        target: "/Preview/Anime Library/Frieren - S01E01 - The Journey's End.mkv",
-        target_name: "Frieren - S01E01 - The Journey's End.mkv",
+        target: "/Preview/Anime Library/Frieren-S01E01.mkv",
+        target_name: "Frieren-S01E01.mkv",
         status: "OK",
         detail: "",
         parsed: { title: "Frieren", season: 1, episode: 1, year: null },
@@ -118,8 +118,8 @@ const previewItems: PlanItem[] = [
     {
         source: "/Preview/Anime Library/[SubsPlease] Frieren - 02 (1080p).mkv",
         source_name: "[SubsPlease] Frieren - 02 (1080p).mkv",
-        target: "/Preview/Anime Library/Frieren - S01E02 - It Didn't Have to Be Magic.mkv",
-        target_name: "Frieren - S01E02 - It Didn't Have to Be Magic.mkv",
+        target: "/Preview/Anime Library/Frieren-S01E02.mkv",
+        target_name: "Frieren-S01E02.mkv",
         status: "OK",
         detail: "",
         parsed: { title: "Frieren", season: 1, episode: 2, year: null },

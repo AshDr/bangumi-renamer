@@ -31,12 +31,9 @@ def build_new_name(
     episode_title: str,
     extension: str,
 ) -> str:
-    """Produce ``{series} - S{season:02}E{episode:02} - {episode_title}.{ext}``."""
-    stem = (
-        f"{sanitize_component(series)} - "
-        f"S{season:02d}E{episode:02d}"
-        f"{' - ' + sanitize_component(episode_title) if episode_title else ''}"
-    )
+    """Produce ``{series}-S{season:02}E{episode:02}.{ext}``."""
+    series_component = sanitize_component(series).rstrip("-") or "_"
+    stem = f"{series_component}-S{season:02d}E{episode:02d}"
     stem_bytes = stem.encode("utf-8")
     if len(stem_bytes) > _MAX_STEM_BYTES:
         # Truncate on a char boundary, not a byte boundary.
@@ -47,7 +44,12 @@ def build_new_name(
     return f"{stem}.{ext}"
 
 
-def resolve_conflict(target: Path, *, on_conflict: str = "suffix") -> Path | None:
+def resolve_conflict(
+    target: Path,
+    *,
+    on_conflict: str = "suffix",
+    extension: str | None = None,
+) -> Path | None:
     """Return the final target path, or None if we should skip.
 
     ``on_conflict`` is one of ``skip``, ``suffix``, ``overwrite``.
@@ -58,10 +60,13 @@ def resolve_conflict(target: Path, *, on_conflict: str = "suffix") -> Path | Non
         return target
     if on_conflict == "skip":
         return None
-    # suffix: append " (1)", " (2)", ...
-    stem, suffix = target.stem, target.suffix
+    # Keep language/disposition tags inside compound subtitle extensions.
+    compound_suffix = f".{extension.lstrip('.')}" if extension else target.suffix
+    if not target.name.lower().endswith(compound_suffix.lower()):
+        compound_suffix = target.suffix
+    stem = target.name[: -len(compound_suffix)]
     for i in range(1, 1000):
-        candidate = target.with_name(f"{stem} ({i}){suffix}")
+        candidate = target.with_name(f"{stem} ({i}){compound_suffix}")
         if not candidate.exists():
             return candidate
     return None

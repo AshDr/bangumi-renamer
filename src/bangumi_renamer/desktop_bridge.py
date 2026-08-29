@@ -17,6 +17,7 @@ from platformdirs import user_config_dir
 
 from .core import PlanItem, apply_plan, build_plan
 from .matcher import force_match, search_candidates
+from .parser import extract_media_extension
 from .scanner import scan
 from .tmdb import TmdbClient
 
@@ -228,7 +229,7 @@ def _deserialize_apply_item(raw: object, *, root: Path) -> PlanItem:
 
     if source.parent != target.parent:
         raise ValueError("Rename targets must remain in the source directory.")
-    if source.suffix.lower() != target.suffix.lower():
+    if extract_media_extension(source) != extract_media_extension(target):
         raise ValueError("Rename targets must preserve the source extension.")
     if not source.is_relative_to(root) or not target.is_relative_to(root):
         raise ValueError("Rename paths must stay inside the selected root.")

@@ -77,16 +77,14 @@ def test_apply_renames_and_writes_history(tmp_path: Path, monkeypatch) -> None:
     assert result.exit_code == 0, result.output
     assert not source.exists(), "source file should have been renamed"
 
-    expected = tmp_path / "Frieren: Beyond Journey's End - S01E01 - The Journey's End.mkv"
-    # Colon is illegal on some filesystems; our sanitiser replaces it with a space.
+    expected = tmp_path / "Frieren Beyond Journey's End-S01E01.mkv"
+    # Colon is illegal on some filesystems, so the sanitiser replaces it with a space.
     renamed = list(tmp_path.glob("Frieren*.mkv"))
     assert renamed, f"no renamed file found; got {list(tmp_path.iterdir())}"
-    assert "S01E01" in renamed[0].name
-    assert "The Journey" in renamed[0].name
+    assert renamed == [expected]
 
     history = tmp_path / ".bangumi-renamer" / "history"
     assert history.exists() and any(history.iterdir())
-    _ = expected  # kept for documentation; not asserted directly
 
 
 @respx.mock

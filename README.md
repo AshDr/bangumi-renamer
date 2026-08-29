@@ -7,6 +7,8 @@ CLI and a Tauri 2 desktop application with a React 18 frontend.
 ## Features
 
 - Anime-aware filename parsing via [`anitopy`](https://github.com/igorcmoura/anitopy)
+- External subtitle renaming with language and disposition suffix preservation, such as
+  `.chs.ass`, `.cht.ass`, and `.zh-Hans.forced.srt`
 - TMDB metadata lookup with local cache (7-day TTL)
 - Fuzzy matching with [`rapidfuzz`](https://github.com/rapidfuzz/RapidFuzz) and year disambiguation
 - Manual override when auto-match is wrong: `--tmdb-id <N>` (CLI) or the
@@ -113,14 +115,21 @@ packages that sidecar with the Tauri application.
 ## Output format
 
 ```
-{SeriesName} - S{season:02}E{episode:02} - {EpisodeTitle}.{ext}
+{SeriesName}-S{season:02}E{episode:02}.{ext}
 ```
 
 Example:
 
 ```
 [SubsPlease] Frieren - 01 (1080p).mkv
--> Frieren - S01E01 - The Journey's End.mkv
+-> Frieren-S01E01.mkv
+```
+
+External subtitles use the same compact name while retaining their subtitle suffixes:
+
+```text
+[SubsPlease] Frieren - 01 (1080p).chs.ass
+-> Frieren-S01E01.chs.ass
 ```
 
 ## Project structure

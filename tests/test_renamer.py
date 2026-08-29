@@ -16,14 +16,14 @@ def test_build_new_name_basic() -> None:
             episode_title="The Journey's End",
             extension="mkv",
         )
-        == "Frieren - S01E01 - The Journey's End.mkv"
+        == "Frieren-S01E01.mkv"
     )
 
 
 def test_build_new_name_without_episode_title() -> None:
     assert (
         build_new_name(series="Bocchi", season=1, episode=3, episode_title="", extension="mp4")
-        == "Bocchi - S01E03.mp4"
+        == "Bocchi-S01E03.mp4"
     )
 
 

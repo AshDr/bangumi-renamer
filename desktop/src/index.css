@@ -38,7 +38,7 @@ button { color: inherit; }
 .titlebar-macos { padding-left: 88px; }
 
 .brand, .titlebar-actions, .header-actions, .brand-mark, .button, .status-pill,
-.file-cell, .match-cell, .safety-card, .step, .status-banner, .confirm-copy,
+.file-cell, .match-cell, .step, .status-banner, .confirm-copy,
 .input-with-icon { display: flex; align-items: center; }
 .brand { gap: 10px; color: #f8fafc; font-size: 14px; font-weight: 720; letter-spacing: -0.01em; }
 .brand-mark { justify-content: center; width: 30px; height: 30px; border-radius: 9px; color: #b8f7ef; background: linear-gradient(145deg, #1b8a84, #166079); box-shadow: 0 8px 24px rgba(28, 139, 135, 0.22); }
@@ -51,19 +51,13 @@ button { color: inherit; }
 .workspace { display: grid; grid-template-columns: 270px minmax(0, 1fr); min-height: 0; }
 .sidebar { display: flex; flex-direction: column; padding: 36px 28px 28px; border-right: 1px solid rgba(148, 163, 184, 0.11); background: rgba(5, 14, 25, 0.46); }
 .eyebrow { color: #4fbbb2; font-size: 10px; font-weight: 800; letter-spacing: 0.16em; }
-.sidebar h1 { max-width: 210px; margin: 13px 0 12px; color: #edf5fc; font-size: 25px; line-height: 1.18; letter-spacing: -0.035em; }
-.sidebar-copy p { margin: 0; color: #78899f; font-size: 12px; line-height: 1.65; }
-.steps { display: grid; gap: 7px; margin-top: 38px; }
+.steps { display: grid; gap: 7px; }
 .step { gap: 10px; min-height: 42px; padding: 0 9px; border-radius: 10px; color: #63748a; font-size: 11px; }
 .step > span { display: grid; place-items: center; width: 25px; height: 25px; border: 1px solid rgba(148, 163, 184, 0.16); border-radius: 8px; font-family: ui-monospace, monospace; font-size: 9px; }
 .step strong { flex: 1; }
 .step.active { color: #dce8f3; background: rgba(27, 108, 119, 0.16); }
 .step.active > span { color: #a7f3e8; border-color: rgba(45, 212, 191, 0.28); background: rgba(20, 184, 166, 0.1); }
 .step.done > span { color: #9be7dd; }
-.safety-card { gap: 12px; margin-top: auto; padding: 14px; border: 1px solid rgba(45, 212, 191, 0.12); border-radius: 12px; color: #4fb6ad; background: rgba(13, 67, 72, 0.12); }
-.safety-card div { display: grid; gap: 3px; }
-.safety-card strong { color: #c9e8e4; font-size: 11px; }
-.safety-card span { color: #6f8d93; font-size: 9px; line-height: 1.45; }
 
 .content { position: relative; min-width: 0; min-height: 0; padding: 30px 34px 22px; overflow: auto; }
 .content-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; margin-bottom: 24px; }
@@ -182,16 +176,13 @@ tbody tr:hover { background: rgba(65, 158, 164, 0.045); }
 
 .sidebar { border-right-color: #e5e5e5; background: #f7f7f5; }
 .eyebrow { color: #686868; }
-.sidebar h1, .content-header h2 { color: #1d1d1d; }
-.sidebar-copy p, .path-label { color: #737373; }
+.content-header h2 { color: #1d1d1d; }
+.path-label { color: #737373; }
 .step { color: #7a7a7a; }
 .step > span { border-color: #d7d7d4; }
 .step.active { color: #202020; background: #ebebe8; }
 .step.active > span { color: #202020; border-color: #bdbdb8; background: #ffffff; }
 .step.done > span { color: #34745f; }
-.safety-card { color: #4d665d; border-color: #d9dedb; background: #f1f3f1; }
-.safety-card strong { color: #33433d; }
-.safety-card span { color: #718078; }
 
 .button.primary, .button.apply { color: #ffffff; background: #242424; box-shadow: none; }
 .button.primary:hover:not(:disabled), .button.apply:hover:not(:disabled) {
@@ -269,18 +260,13 @@ tbody tr:hover { background: #fafaf8; }
 
 [data-theme="dark"] .sidebar { border-right-color: #323232; background: #1d1d1c; }
 [data-theme="dark"] .eyebrow { color: #aaa9a4; }
-[data-theme="dark"] .sidebar h1,
 [data-theme="dark"] .content-header h2 { color: #f1f1ef; }
-[data-theme="dark"] .sidebar-copy p,
 [data-theme="dark"] .path-label { color: #999995; }
 [data-theme="dark"] .step { color: #949490; }
 [data-theme="dark"] .step > span { border-color: #444441; }
 [data-theme="dark"] .step.active { color: #f0f0ed; background: #2a2a29; }
 [data-theme="dark"] .step.active > span { color: #f0f0ed; border-color: #5a5a56; background: #202020; }
 [data-theme="dark"] .step.done > span { color: #75a995; }
-[data-theme="dark"] .safety-card { color: #9eb5ac; border-color: #3b4541; background: #252b28; }
-[data-theme="dark"] .safety-card strong { color: #d3ddd9; }
-[data-theme="dark"] .safety-card span { color: #91a098; }
 
 [data-theme="dark"] .button.primary,
 [data-theme="dark"] .button.apply { color: #181818; background: #eeeeec; }
