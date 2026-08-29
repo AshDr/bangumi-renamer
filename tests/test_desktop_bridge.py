@@ -14,16 +14,26 @@ def test_settings_round_trip_without_returning_secret(tmp_path: Path, monkeypatc
     monkeypatch.delenv("TMDB_API_KEY", raising=False)
 
     settings = desktop_bridge.save_settings(
-        {"api_key": "secret", "language": "zh-CN", "conflict_policy": "skip"}
+        {
+            "metadata_provider": "tmdb",
+            "api_key": "secret",
+            "conflict_policy": "skip",
+        }
     )
 
     assert settings == {
+        "metadata_provider": "tmdb",
         "ui_language": "en-US",
-        "language": "zh-CN",
         "conflict_policy": "skip",
         "theme": "system",
         "has_api_key": True,
         "api_key_from_environment": False,
+        "has_thetvdb_api_key": False,
+        "thetvdb_api_key_from_environment": False,
+        "has_thetvdb_pin": False,
+        "thetvdb_pin_from_environment": False,
+        "has_tmdb_api_key": True,
+        "tmdb_api_key_from_environment": False,
     }
     assert "secret" not in str(settings)
     assert config_path.stat().st_mode & 0o777 == 0o600

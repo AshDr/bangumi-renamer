@@ -13,9 +13,10 @@ from pathlib import Path
 
 from .history import record_apply
 from .matcher import MatchError, MatchResult, match
+from .metadata import MetadataClient
 from .parser import ParsedFile, ParseError, parse
 from .renamer import build_new_name, resolve_conflict
-from .tmdb import Episode, TmdbClient, TmdbError
+from .tmdb import Episode, TmdbError
 
 # (file_index, total_files, source_path) — GUI wires this to a progress bar.
 ProgressCb = Callable[[int, int, Path], None]
@@ -36,7 +37,7 @@ class PlanItem:
 def build_plan(
     files: list[Path],
     *,
-    client: TmdbClient,
+    client: MetadataClient,
     forced: MatchResult | None,
     on_conflict: str = "suffix",
     progress_cb: ProgressCb | None = None,
@@ -44,8 +45,8 @@ def build_plan(
 ) -> list[PlanItem]:
     """Compute the rename plan for ``files`` without touching disk.
 
-    Per-season TMDB fetches and per-title match results are memoised within a
-    single call so a directory of one show only hits TMDB once per season.
+    Per-season metadata fetches and per-title match results are memoised within
+    a single call so a directory of one show only hits the provider once per season.
     """
     season_cache: SeasonCache = {}
     match_cache: MatchCache = {}
@@ -108,7 +109,7 @@ def _parse_source(source: Path, *, verbose: bool) -> ParsedFile | PlanItem:
 def _resolve_match(
     parsed: ParsedFile,
     *,
-    client: TmdbClient,
+    client: MetadataClient,
     forced: MatchResult | None,
     match_cache: MatchCache,
 ) -> MatchResult | PlanItem:
@@ -135,7 +136,7 @@ def _get_season_episodes(
     parsed: ParsedFile,
     match_result: MatchResult,
     *,
-    client: TmdbClient,
+    client: MetadataClient,
     season_cache: SeasonCache,
 ) -> dict[int, Episode] | PlanItem:
     key = (match_result.tmdb_id, parsed.season)
@@ -227,25 +228,26 @@ def apply_plan(
 
 
 def explain_season_lookup_failure(
-    client: TmdbClient, tmdb_id: int, series_name: str, season: int
+    client: MetadataClient, tmdb_id: int, series_name: str, season: int
 ) -> str:
-    """Build a helpful detail string when /tv/{id}/season/{N} fails.
+    """Build a helpful detail string when a provider season lookup fails.
 
-    Anime releases often tag sequels as "2nd Season" while TMDB merges them
-    into a single continuous season with absolute episode numbers. Telling
-    the user which seasons actually exist is more useful than the raw 404.
+    Telling the user which seasons actually exist is more useful than a raw
+    provider error. TMDB receives an additional hint about absolute numbering.
     """
     try:
         tv = client.get_tv(tmdb_id)
     except TmdbError:
-        return f"season {season} not found on TMDB for '{series_name}'"
+        return f"season {season} not found on {client.provider_name} for '{series_name}'"
     available = sorted({int(s.get("season_number", -1)) for s in tv.get("seasons", [])})
     available = [n for n in available if n >= 0]
-    hint = (
-        " (anime 'Nth Season' tags often map to TMDB season 1 with absolute "
-        "episode numbers; try --tmdb-id with the right show or re-tag the files)"
-    )
+    hint = ""
+    if client.provider_name == "TMDB":
+        hint = (
+            " (anime 'Nth Season' tags often map to TMDB season 1 with absolute "
+            "episode numbers; try --tmdb-id with the right show or re-tag the files)"
+        )
     return (
-        f"season {season} not found on TMDB for '{series_name}'; "
+        f"season {season} not found on {client.provider_name} for '{series_name}'; "
         f"available: {available}{hint}"
     )
