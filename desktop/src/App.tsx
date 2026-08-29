@@ -4,7 +4,6 @@ import {
     Check,
     CheckCircle2,
     ChevronRight,
-    FilePenLine,
     FolderOpen,
     KeyRound,
     Languages,
@@ -18,6 +17,7 @@ import {
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 
 import { desktopApi } from "./api";
+import appIcon from "../src-tauri/icons/64x64.png";
 import { createTranslator, supportedUiLocales } from "./i18n";
 import type { Translator } from "./i18n";
 import { actionableItems, rowsForMatch, summarize, titlebarClassName } from "./lib";
@@ -238,7 +238,7 @@ export default function App() {
                 data-tauri-drag-region
             >
                 <div className="brand" data-tauri-drag-region>
-                    <div className="brand-mark"><FilePenLine size={18} /></div>
+                    <img className="brand-mark" src={appIcon} alt="" />
                     <span>Bangumi Renamer</span>
                     <span className="version-pill">0.1</span>
                 </div>
