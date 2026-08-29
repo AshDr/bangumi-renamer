@@ -106,7 +106,7 @@ const zhCN: Messages = {
     "common.cancel": "取消", "common.close": "关闭", "title.settings": "设置",
     "workflow.label": "工作流程", "workflow.choose": "选择文件夹", "workflow.review": "确认匹配", "workflow.apply": "重命名完成",
     "workspace.select": "选择媒体文件夹", "workspace.hint": "将文件夹拖到此处，或使用选择器。", "workspace.rescan": "重新扫描", "workspace.choose": "选择文件夹", "workspace.rematch": "重新匹配", "workspace.chooseOther": "选择其他文件夹",
-    "drop.title": "让媒体库井然有序", "drop.description": "将动漫或电视剧文件夹拖到窗口任意位置", "drop.formats": "视频，以及 ASS、SSA、SRT、VTT、SUB、IDX、SUP、MKS 字幕",
+    "drop.title": "让媒体库井然有序", "drop.description": "将动漫或电视剧文件夹拖到窗口任意位置", "drop.formats": "视频或字幕文件",
     "summary.total": "文件总数", "summary.ready": "已就绪", "summary.review": "需要检查", "summary.rename": "将重命名",
     "table.empty": "未找到支持的媒体文件", "table.emptyHint": "请尝试其他文件夹。", "table.source": "源文件", "table.planned": "计划名称", "table.match": "匹配", "table.status": "状态", "table.unparsed": "无法解析", "table.confidence": "置信度 {value}%", "table.unmatched": "未匹配", "table.pickMatch": "选择其他元数据匹配",
     "status.OK": "就绪", "status.unparsed": "无法解析", "status.no match": "无匹配", "status.no season": "无季度", "status.conflict": "冲突", "status.error": "错误",
