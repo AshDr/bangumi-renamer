@@ -106,3 +106,15 @@ def test_missing_api_key_raises(tmp_path, monkeypatch) -> None:
     cache = JsonCache(root=tmp_path, ttl=3600)
     with pytest.raises(TmdbError):
         TmdbClient(api_key=None, cache=cache)
+
+
+@respx.mock
+def test_connection_checks_tmdb_configuration_without_using_cache(tmdb_client: TmdbClient) -> None:
+    route = respx.get(f"{TMDB_BASE_URL}/configuration").mock(
+        return_value=httpx.Response(200, json={"images": {}})
+    )
+
+    tmdb_client.test_connection()
+    tmdb_client.test_connection()
+
+    assert route.call_count == 2

@@ -169,11 +169,37 @@ def apply_items(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def test_provider_connection(payload: dict[str, Any]) -> dict[str, Any]:
+    """Test provider credentials without persisting draft values from the settings form."""
+    stored = _load_stored_settings()
+    provider = _normalize_metadata_provider(payload.get("metadata_provider"))
+    language = str(payload.get("language") or "en-US")
+
+    if provider == "thetvdb":
+        api_key = _draft_or_saved_credential(
+            payload, stored, "thetvdb_api_key", "THETVDB_API_KEY"
+        )
+        pin = _draft_or_saved_credential(payload, stored, "thetvdb_pin", "THETVDB_PIN")
+        client: MetadataClient = TheTvdbClient(api_key=api_key, pin=pin, lang=language)
+    else:
+        api_key = _draft_or_saved_credential(
+            payload, stored, "tmdb_api_key", "TMDB_API_KEY", "api_key"
+        )
+        client = TmdbClient(api_key=api_key, lang=language)
+
+    try:
+        client.test_connection()
+    finally:
+        client.close()
+    return {"provider": provider, "connected": True}
+
+
 def dispatch(command: str, payload: dict[str, Any]) -> dict[str, Any]:
     """Dispatch one allow-listed desktop command."""
     handlers = {
         "settings.get": lambda _payload: load_settings(),
         "settings.save": save_settings,
+        "settings.test_connection": test_provider_connection,
         "plan.scan": scan_folder,
         "plan.candidates": search_matches,
         "plan.rebuild": rebuild_matches,
@@ -227,6 +253,25 @@ def _credential_value(
         "",
     )
     return environment_value or stored_value, bool(environment_value)
+
+
+def _draft_or_saved_credential(
+    payload: dict[str, Any],
+    stored: dict[str, Any],
+    payload_key: str,
+    environment_name: str,
+    *legacy_stored_keys: str,
+) -> str:
+    draft = payload.get(payload_key)
+    if isinstance(draft, str) and draft.strip():
+        return draft.strip()
+    value, _ = _credential_value(
+        stored,
+        environment_name,
+        payload_key,
+        *legacy_stored_keys,
+    )
+    return value
 
 
 def _make_client(payload: dict[str, Any]) -> MetadataClient:

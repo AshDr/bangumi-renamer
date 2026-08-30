@@ -4,6 +4,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import type {
     ApplyResult,
     Candidate,
+    ConnectionTestResult,
     DesktopSettings,
     MetadataLanguage,
     PlanItem,
@@ -31,6 +32,16 @@ export const desktopApi = {
     getSettings: () => bridge<DesktopSettings>("settings.get"),
     saveSettings: (payload: Record<string, unknown>) =>
         bridge<DesktopSettings>("settings.save", payload),
+    testConnection: (
+        metadataProvider: DesktopSettings["metadata_provider"],
+        credentials: Record<string, string>,
+        language: MetadataLanguage,
+    ) =>
+        bridge<ConnectionTestResult>("settings.test_connection", {
+            metadata_provider: metadataProvider,
+            language,
+            ...credentials,
+        }),
     scan: (path: string, settings: DesktopSettings, language: MetadataLanguage) =>
         bridge<ScanResult>("plan.scan", {
             path,
@@ -82,6 +93,9 @@ function previewBridge(command: string, payload: Record<string, unknown>): unkno
         tmdb_api_key_from_environment: false,
     };
     if (command === "settings.get" || command === "settings.save") return settings;
+    if (command === "settings.test_connection") {
+        return { provider: payload.metadata_provider, connected: true };
+    }
     if (command === "plan.scan") return { root: String(payload.path), items: previewItems };
     if (command === "plan.candidates") {
         return {

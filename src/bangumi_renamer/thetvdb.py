@@ -160,6 +160,10 @@ class TheTvdbClient:
             raise TheTvdbError(f"season {season} not found on TheTVDB for series {tv_id}")
         return episodes
 
+    def test_connection(self) -> None:
+        """Verify network access and credentials by requesting a fresh access token."""
+        self._authenticate()
+
     def close(self) -> None:
         self._client.close()
 

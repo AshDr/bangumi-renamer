@@ -42,6 +42,7 @@ describe("metadata provider settings", () => {
 
         expect(html).toContain("TheTVDB API key");
         expect(html).toContain("TheTVDB PIN");
+        expect(html).toContain("Test TheTVDB connection");
         expect(html).not.toContain("TMDB API key");
     });
 
@@ -49,6 +50,7 @@ describe("metadata provider settings", () => {
         const html = renderSettings("tmdb");
 
         expect(html).toContain("TMDB API key");
+        expect(html).toContain("Test TMDB connection");
         expect(html).not.toContain("TheTVDB API key");
         expect(html).not.toContain("TheTVDB PIN");
     });

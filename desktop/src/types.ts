@@ -55,6 +55,11 @@ export interface ScanResult {
     items: PlanItem[];
 }
 
+export interface ConnectionTestResult {
+    provider: MetadataProvider;
+    connected: boolean;
+}
+
 export interface ApplyResult {
     renamed: number;
     renames: Array<{ source: string; target: string }>;
