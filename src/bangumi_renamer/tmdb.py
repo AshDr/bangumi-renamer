@@ -100,6 +100,17 @@ class TmdbClient:
             )
         return episodes
 
+    def test_connection(self) -> None:
+        """Verify network access and credentials without reading or writing the cache."""
+        try:
+            response = self._client.get("/configuration", params={"api_key": self.api_key})
+        except httpx.HTTPError as exc:
+            raise TmdbError(f"TMDB connection test failed: {exc}") from exc
+        if response.status_code >= 400:
+            raise TmdbError(
+                f"TMDB connection test failed ({response.status_code}): {response.text[:200]}"
+            )
+
     def close(self) -> None:
         self._client.close()
 

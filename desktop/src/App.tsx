@@ -502,7 +502,15 @@ export function SettingsModal({
     const [policy, setPolicy] = useState(settings.conflict_policy);
     const [theme, setTheme] = useState(settings.theme);
     const [saving, setSaving] = useState(false);
+    const [connectionState, setConnectionState] = useState<{
+        status: "idle" | "testing" | "success" | "error";
+        message?: string;
+    }>({ status: "idle" });
     const t = createTranslator(uiLanguage);
+    const providerLabel = providerName(metadataProvider);
+    const hasConnectionCredential = metadataProvider === "thetvdb"
+        ? Boolean(thetvdbApiKey.trim() || settings.has_thetvdb_api_key)
+        : Boolean(tmdbApiKey.trim() || settings.has_tmdb_api_key);
 
     function changeTheme(value: DesktopSettings["theme"]) {
         setTheme(value);
@@ -512,6 +520,27 @@ export function SettingsModal({
     function changeLanguage(value: UiLocale) {
         setUiLanguage(value);
         onLanguagePreview(value);
+    }
+
+    function changeProvider(value: MetadataProvider) {
+        setMetadataProvider(value);
+        setConnectionState({ status: "idle" });
+    }
+
+    async function testConnection() {
+        setConnectionState({ status: "testing" });
+        try {
+            await desktopApi.testConnection(
+                metadataProvider,
+                metadataProvider === "thetvdb"
+                    ? { thetvdb_api_key: thetvdbApiKey, thetvdb_pin: thetvdbPin }
+                    : { tmdb_api_key: tmdbApiKey },
+                uiLanguage,
+            );
+            setConnectionState({ status: "success" });
+        } catch (reason) {
+            setConnectionState({ status: "error", message: errorText(reason) });
+        }
     }
 
     async function save() {
@@ -538,19 +567,35 @@ export function SettingsModal({
             <div className="form-stack">
                 <label>
                     <span>{t("settings.metadataProvider")}</span>
-                    <select value={metadataProvider} onChange={(event) => setMetadataProvider(event.target.value as MetadataProvider)}>
+                    <select value={metadataProvider} onChange={(event) => changeProvider(event.target.value as MetadataProvider)}>
                         <option value="thetvdb">{t("provider.thetvdb")}</option>
                         <option value="tmdb">{t("provider.tmdb")}</option>
                     </select>
                 </label>
                 {metadataProvider === "thetvdb" ? (
                     <>
-                        <label><span>{t("settings.thetvdbApiKey")}</span><div className="input-with-icon"><KeyRound size={16} /><input type="password" value={thetvdbApiKey} onChange={(event) => setThetvdbApiKey(event.target.value)} placeholder={settings.has_thetvdb_api_key ? t("settings.savedKey") : t("settings.newThetvdbKey")} /></div>{settings.thetvdb_api_key_from_environment && <small>{t("settings.environmentCredential", { name: "THETVDB_API_KEY" })}</small>}</label>
-                        <label><span>{t("settings.thetvdbPin")}</span><div className="input-with-icon"><KeyRound size={16} /><input type="password" value={thetvdbPin} onChange={(event) => setThetvdbPin(event.target.value)} placeholder={settings.has_thetvdb_pin ? t("settings.savedPin") : t("settings.newThetvdbPin")} /></div>{settings.thetvdb_pin_from_environment && <small>{t("settings.environmentCredential", { name: "THETVDB_PIN" })}</small>}</label>
+                        <label><span>{t("settings.thetvdbApiKey")}</span><div className="input-with-icon"><KeyRound size={16} /><input type="password" value={thetvdbApiKey} onChange={(event) => { setThetvdbApiKey(event.target.value); setConnectionState({ status: "idle" }); }} placeholder={settings.has_thetvdb_api_key ? t("settings.savedKey") : t("settings.newThetvdbKey")} /></div>{settings.thetvdb_api_key_from_environment && <small>{t("settings.environmentCredential", { name: "THETVDB_API_KEY" })}</small>}</label>
+                        <label><span>{t("settings.thetvdbPin")}</span><div className="input-with-icon"><KeyRound size={16} /><input type="password" value={thetvdbPin} onChange={(event) => { setThetvdbPin(event.target.value); setConnectionState({ status: "idle" }); }} placeholder={settings.has_thetvdb_pin ? t("settings.savedPin") : t("settings.newThetvdbPin")} /></div>{settings.thetvdb_pin_from_environment && <small>{t("settings.environmentCredential", { name: "THETVDB_PIN" })}</small>}</label>
                     </>
                 ) : (
-                    <label><span>{t("settings.tmdbApiKey")}</span><div className="input-with-icon"><KeyRound size={16} /><input type="password" value={tmdbApiKey} onChange={(event) => setTmdbApiKey(event.target.value)} placeholder={settings.has_tmdb_api_key ? t("settings.savedKey") : t("settings.newTmdbKey")} /></div>{settings.tmdb_api_key_from_environment && <small>{t("settings.environmentCredential", { name: "TMDB_API_KEY" })}</small>}</label>
+                    <label><span>{t("settings.tmdbApiKey")}</span><div className="input-with-icon"><KeyRound size={16} /><input type="password" value={tmdbApiKey} onChange={(event) => { setTmdbApiKey(event.target.value); setConnectionState({ status: "idle" }); }} placeholder={settings.has_tmdb_api_key ? t("settings.savedKey") : t("settings.newTmdbKey")} /></div>{settings.tmdb_api_key_from_environment && <small>{t("settings.environmentCredential", { name: "TMDB_API_KEY" })}</small>}</label>
                 )}
+                <div className="connection-test">
+                    <button
+                        className="button secondary"
+                        disabled={!hasConnectionCredential || connectionState.status === "testing"}
+                        onClick={() => void testConnection()}
+                    >
+                        {connectionState.status === "testing" && <LoaderCircle className="spin" size={15} />}
+                        {t("settings.testConnection", { provider: providerLabel })}
+                    </button>
+                    {connectionState.status === "success" && (
+                        <span className="connection-result success"><CheckCircle2 size={15} />{t("settings.connectionSuccess", { provider: providerLabel })}</span>
+                    )}
+                    {connectionState.status === "error" && (
+                        <span className="connection-result error"><AlertCircle size={15} />{connectionState.message}</span>
+                    )}
+                </div>
                 <label>
                     <span>{t("settings.uiLanguage")}</span>
                     <select value={uiLanguage} onChange={(event) => changeLanguage(event.target.value as UiLocale)}>

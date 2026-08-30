@@ -129,3 +129,20 @@ def test_thetvdb_client_logs_in_searches_and_reads_official_season(tmp_path: Pat
     assert search.calls.last.request.url.params["type"] == "series"
     assert episodes.calls.last.request.url.params["season"] == "3"
     assert episodes.calls.last.request.headers["Authorization"] == "Bearer jwt"
+
+
+@respx.mock
+def test_thetvdb_connection_test_authenticates_without_metadata_requests(tmp_path: Path) -> None:
+    login = respx.post(f"{THETVDB_BASE_URL}/login").mock(
+        return_value=httpx.Response(200, json={"data": {"token": "jwt"}})
+    )
+    client = TheTvdbClient(
+        api_key="tvdb-key",
+        cache=JsonCache(root=tmp_path / "cache", ttl=3600),
+    )
+    try:
+        client.test_connection()
+    finally:
+        client.close()
+
+    assert login.call_count == 1

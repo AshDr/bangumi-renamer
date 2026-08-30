@@ -9,6 +9,7 @@ use tauri::{AppHandle, Manager};
 const ALLOWED_COMMANDS: &[&str] = &[
     "settings.get",
     "settings.save",
+    "settings.test_connection",
     "plan.scan",
     "plan.candidates",
     "plan.rebuild",
@@ -121,6 +122,11 @@ mod tests {
     fn rejects_commands_outside_allow_list() {
         assert!(!ALLOWED_COMMANDS.contains(&"system.shell"));
         assert!(ALLOWED_COMMANDS.contains(&"plan.scan"));
+    }
+
+    #[test]
+    fn allows_metadata_connection_test_command() {
+        assert!(ALLOWED_COMMANDS.contains(&"settings.test_connection"));
     }
 
     #[test]

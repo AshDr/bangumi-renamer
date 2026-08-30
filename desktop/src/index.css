@@ -139,6 +139,11 @@ tbody tr:hover { background: rgba(65, 158, 164, 0.045); }
 .input-with-icon { position: relative; }
 .input-with-icon svg { position: absolute; left: 11px; color: #5c7186; }
 .input-with-icon input { padding-left: 35px; }
+.connection-test { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.connection-result { display: flex; align-items: center; gap: 6px; min-width: 0; color: #567081; font-size: 9px; }
+.connection-result svg { flex: 0 0 auto; }
+.connection-result.success { color: #34745f; }
+.connection-result.error { color: #a04444; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 22px; border-top: 1px solid rgba(148, 163, 184, 0.09); background: rgba(4, 12, 22, 0.3); }
 .candidate-list { max-height: 520px; padding: 12px; overflow: auto; }
 .candidate { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; width: 100%; padding: 14px; border: 1px solid transparent; border-radius: 11px; color: #8091a4; cursor: pointer; text-align: left; background: transparent; }
@@ -329,6 +334,8 @@ tbody tr:hover { background: #fafaf8; }
 [data-theme="dark"] .form-stack select:focus { border-color: #8a8a85; box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.07); }
 [data-theme="dark"] .form-stack small,
 [data-theme="dark"] .input-with-icon svg { color: #989894; }
+[data-theme="dark"] .connection-result.success { color: #86bda8; }
+[data-theme="dark"] .connection-result.error { color: #dfa7a7; }
 [data-theme="dark"] .modal-actions { border-top-color: #383837; background: #202020; }
 [data-theme="dark"] .candidate { color: #aaa9a5; }
 [data-theme="dark"] .candidate:hover { border-color: #444442; background: #252524; }
