@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from bangumi_renamer.core import build_plan
+import pytest
+
+from bangumi_renamer.core import ManualNaming, apply_plan, build_plan
 from bangumi_renamer.matcher import MatchResult
 from bangumi_renamer.parser import ParsedFile
 from bangumi_renamer.tmdb import Episode
@@ -110,3 +112,45 @@ def test_build_plan_marks_duplicate_planned_target_as_conflict(
     assert plan[1].target is not None
     assert plan[1].target.name == "Same Show-S01E01.mkv"
     assert plan[1].detail == "target exists: Same Show-S01E01.mkv"
+
+
+def test_manual_plan_and_apply_without_metadata(tmp_path: Path) -> None:
+    sources = [tmp_path / name for name in (
+        "Unknown Show S03E01.mkv", "Unknown Show S03E01.zh-Hans.forced.srt", "02.mkv",
+    )]
+    for source in sources:
+        source.write_text(source.name)
+    plan = build_plan(sources, manual=ManualNaming(" Custom Show ", 2))
+    assert all(source.exists() for source in sources)
+    assert [item.target.name for item in plan] == [
+        "Custom Show-S02E01.mkv", "Custom Show-S02E01.zh-hans.forced.srt",
+        "Custom Show-S02E02.mkv",
+    ]
+    assert all(item.match is None and item.manual_title == "Custom Show" for item in plan)
+    renames, history = apply_plan(plan, root=tmp_path)
+    assert len(renames) == 3 and history.is_file()
+    for source, target in renames:
+        assert not source.exists()
+        assert target.read_text() == source.name
+
+
+def test_manual_plan_keeps_unparseable_files_and_handles_conflicts(tmp_path: Path) -> None:
+    sources = [tmp_path / name for name in ("01.mkv", "unknown.mkv", "Show - 01-02.mkv")]
+    for source in sources:
+        source.touch()
+    existing = tmp_path / "Custom-S00E01.mkv"
+    existing.write_text("existing")
+    plan = build_plan(sources, manual=ManualNaming("Custom", 0), on_conflict="skip")
+    assert [item.status for item in plan] == ["conflict", "unparsed", "unparsed"]
+    assert apply_plan(plan, root=tmp_path) == ([], None)
+    assert all(source.exists() for source in sources)
+    assert existing.read_text() == "existing"
+    suffixed = build_plan(sources[:1], manual=ManualNaming("Custom", 0))
+    assert suffixed[0].target.name == "Custom-S00E01 (1).mkv"
+
+
+@pytest.mark.parametrize("title,season", [(" ", 1), ("Show", -1), ("Show", 1.5),
+                                          ("Show", True), ("Show", 1000)])
+def test_manual_naming_rejects_invalid_inputs(title, season) -> None:
+    with pytest.raises(ValueError):
+        ManualNaming(title, season)

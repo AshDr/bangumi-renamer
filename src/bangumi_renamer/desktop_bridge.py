@@ -15,7 +15,7 @@ from typing import Any
 
 from platformdirs import user_config_dir
 
-from .core import PlanItem, apply_plan, build_plan
+from .core import ManualNaming, PlanItem, apply_plan, build_plan
 from .matcher import force_match, search_candidates
 from .metadata import MetadataClient
 from .parser import extract_media_extension
@@ -108,6 +108,17 @@ def save_settings(payload: dict[str, Any]) -> dict[str, Any]:
 def scan_folder(payload: dict[str, Any]) -> dict[str, Any]:
     """Build a non-destructive rename plan for a folder."""
     root = _require_directory(payload.get("path"))
+    if payload.get("manual") is not None:
+        raw = payload["manual"]
+        if not isinstance(raw, dict):
+            raise ValueError("Manual naming must contain a title and season.")
+        manual = ManualNaming(title=raw.get("title"), season=raw.get("season"))
+        items = build_plan(
+            files=scan(root), manual=manual,
+            on_conflict=_normalize_conflict_policy(payload.get("conflict_policy")),
+            verbose=True,
+        )
+        return {"root": str(root), "items": [_serialize_plan_item(item) for item in items]}
     client = _make_client(payload)
     try:
         items = build_plan(
@@ -322,6 +333,7 @@ def _serialize_plan_item(item: PlanItem) -> dict[str, Any]:
         "detail": item.detail,
         "parsed": parsed,
         "match": match,
+        "manual_title": item.manual_title,
     }
 
 

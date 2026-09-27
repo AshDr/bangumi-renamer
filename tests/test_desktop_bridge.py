@@ -7,6 +7,34 @@ import pytest
 from bangumi_renamer import desktop_bridge
 
 
+def test_manual_scan_and_apply_bypass_metadata(tmp_path: Path, monkeypatch) -> None:
+    def reject_client(_payload):
+        raise AssertionError("Manual scans must not create metadata clients.")
+
+    monkeypatch.setattr(desktop_bridge, "_make_client", reject_client)
+    source = tmp_path / "01.chs.ass"
+    source.write_text("subtitle")
+    result = desktop_bridge.dispatch("plan.scan", {
+        "path": str(tmp_path), "manual": {"title": "Custom", "season": 0},
+    })
+    assert source.exists()
+    assert result["items"][0]["target_name"] == "Custom-S00E01.chs.ass"
+    assert result["items"][0]["match"] is None
+    assert result["items"][0]["manual_title"] == "Custom"
+    applied = desktop_bridge.dispatch("plan.apply", result)
+    assert applied["renamed"] == 1
+    assert (tmp_path / "Custom-S00E01.chs.ass").read_text() == "subtitle"
+
+
+@pytest.mark.parametrize("manual", [
+    {}, "invalid", {"title": "Show", "season": "1"},
+    {"title": " ", "season": 1}, {"title": "Show", "season": -1},
+])
+def test_manual_scan_rejects_invalid_options(tmp_path: Path, manual) -> None:
+    with pytest.raises(ValueError):
+        desktop_bridge.scan_folder({"path": str(tmp_path), "manual": manual})
+
+
 def test_settings_round_trip_without_returning_secret(tmp_path: Path, monkeypatch) -> None:
     config_path = tmp_path / "settings.json"
     monkeypatch.setattr(desktop_bridge, "_CONFIG_DIR", tmp_path)

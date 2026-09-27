@@ -7,6 +7,7 @@ import type {
     ConnectionTestResult,
     DesktopSettings,
     MetadataLanguage,
+    ManualNaming,
     PlanItem,
     ScanResult,
 } from "./types";
@@ -42,12 +43,13 @@ export const desktopApi = {
             language,
             ...credentials,
         }),
-    scan: (path: string, settings: DesktopSettings, language: MetadataLanguage) =>
+    scan: (path: string, settings: DesktopSettings, language: MetadataLanguage, manual?: ManualNaming) =>
         bridge<ScanResult>("plan.scan", {
             path,
             metadata_provider: settings.metadata_provider,
             language,
             conflict_policy: settings.conflict_policy,
+            manual,
         }),
     candidates: (query: string, settings: DesktopSettings, language: MetadataLanguage) =>
         bridge<{ candidates: Candidate[] }>("plan.candidates", {
@@ -96,7 +98,19 @@ function previewBridge(command: string, payload: Record<string, unknown>): unkno
     if (command === "settings.test_connection") {
         return { provider: payload.metadata_provider, connected: true };
     }
-    if (command === "plan.scan") return { root: String(payload.path), items: previewItems };
+    if (command === "plan.scan") {
+        const manual = payload.manual as ManualNaming | undefined;
+        const items = manual ? previewItems.map((item) => {
+            const targetName = `${manual.title}-S${String(manual.season).padStart(2, "0")}E${String(item.parsed!.episode).padStart(2, "0")}.mkv`;
+            return {
+                ...item, target_name: targetName,
+                target: `${payload.path}/${targetName}`, status: "OK", detail: "",
+                parsed: { ...item.parsed, title: manual.title, season: manual.season },
+                match: null, manual_title: manual.title,
+            };
+        }) : previewItems;
+        return { root: String(payload.path), items };
+    }
     if (command === "plan.candidates") {
         return {
             candidates: [

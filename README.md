@@ -111,6 +111,29 @@ The path may be a single supported media file or a directory. Directory scans ar
 skip hidden files and directories. When stdout is not a TTY, the CLI automatically switches to
 plain line-based output.
 
+### Manual naming without metadata
+
+Provide both a title and season to rename a batch without an API key or network access:
+
+```bash
+uv run bangumi-renamer /path/to/videos --title "My Series" --season 2
+uv run bangumi-renamer /path/to/videos --title "My Series" --season 2 --apply
+```
+
+The first command only previews changes. Manual naming applies to all supported media
+in the selected folder and its subfolders. It preserves parsed episode numbers and
+subtitle language/disposition tags. For example, `01.mkv` becomes `My Series-S02E01.mkv`,
+and `01.chs.ass` becomes `My Series-S02E01.chs.ass`.
+
+Seasons must be integers from 0 to 999; use 0 for specials. Files without a single
+recognizable episode number remain unparsed and are not renamed. Manual naming cannot
+be combined with `--tmdb-id`. Existing conflict policies still apply.
+
+In the desktop application, select **Manual naming** under **Naming mode**, enter the
+series title and season, then choose a folder (or rescan the current folder). Review
+the preview before applying. Editing these inputs clears the old preview so it cannot
+be applied with outdated names. No metadata credentials are required in this mode.
+
 ## Usage - Desktop application
 
 ```bash
@@ -118,7 +141,7 @@ cd desktop
 npm run tauri dev
 ```
 
-1. On first launch, Settings opens if the default TheTVDB provider has no API key. Select TheTVDB
+1. For metadata matching, open Settings and select TheTVDB
    or TMDB and enter the corresponding credentials.
 2. Drop a folder onto the window or use **Choose folder**. The application recursively scans it and
    builds a preview without changing any files.

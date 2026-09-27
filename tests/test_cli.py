@@ -15,6 +15,32 @@ from bangumi_renamer.tmdb import TMDB_BASE_URL
 runner = CliRunner()
 
 
+def test_manual_cli_needs_no_credentials_and_defaults_to_preview(tmp_path, monkeypatch) -> None:
+    monkeypatch.delenv("TMDB_API_KEY", raising=False)
+    source = tmp_path / "01.mkv"
+    source.write_text("video")
+    args = [str(tmp_path), "--title", "My Show", "--season", "2", "--json"]
+    preview = runner.invoke(app, args)
+    assert preview.exit_code == 0, preview.output
+    assert 'My Show-S02E01.mkv' in preview.output
+    assert source.exists()
+    applied = runner.invoke(app, [*args, "--apply", "--yes"])
+    assert applied.exit_code == 0, applied.output
+    assert (tmp_path / "My Show-S02E01.mkv").read_text() == "video"
+    assert list((tmp_path / ".bangumi-renamer/history").glob("*.json"))
+
+
+def test_manual_cli_rejects_incomplete_or_conflicting_options(tmp_path) -> None:
+    for options in (
+        ["--title", "Show"], ["--season", "1"],
+        ["--title", " ", "--season", "1"],
+        ["--title", "Show", "--season", "1", "--tmdb-id", "1"],
+        ["--title", "Show", "--season", "-1"],
+    ):
+        result = runner.invoke(app, [str(tmp_path), *options])
+        assert result.exit_code == 2, result.output
+
+
 def _mock_frieren() -> None:
     respx.get(f"{TMDB_BASE_URL}/search/tv").mock(
         return_value=httpx.Response(

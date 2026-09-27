@@ -69,6 +69,9 @@ const statusTranslationKeys = {
 } as const;
 
 export default function App() {
+    const [manualMode, setManualMode] = useState(false);
+    const [manualTitle, setManualTitle] = useState("");
+    const [manualSeason, setManualSeason] = useState("1");
     const [settings, setSettings] = useState<DesktopSettings>(defaultSettings);
     const [root, setRoot] = useState<string | null>(null);
     const [items, setItems] = useState<PlanItem[]>([]);
@@ -113,14 +116,18 @@ export default function App() {
             .getSettings()
             .then((value) => {
                 setSettings(value);
-                if (!value.has_api_key) setSettingsOpen(true);
             })
             .catch((reason: unknown) => setError(errorText(reason)));
     }, []);
 
     const scanPath = useCallback(
         async (path: string, language?: MetadataLanguage) => {
-            if (!settings.has_api_key) {
+            if (busy !== "idle") return;
+            if (manualMode && (!manualTitle.trim() || !/^\d{1,3}$/.test(manualSeason))) {
+                setError(t("manual.invalid"));
+                return;
+            }
+            if (!manualMode && !settings.has_api_key) {
                 setSettingsOpen(true);
                 setError(t("notice.apiKeyRequired", { provider: activeProviderName }));
                 return;
@@ -135,7 +142,9 @@ export default function App() {
                 settings.ui_language,
             );
             try {
-                const result = await desktopApi.scan(path, settings, workspaceLanguage);
+                const result = await desktopApi.scan(path, settings, workspaceLanguage,
+                    manualMode ? { title: manualTitle.trim(), season: Number(manualSeason) } : undefined,
+                );
                 setRoot(result.root);
                 setFolderMetadataLanguages((current) => ({
                     ...current,
@@ -153,11 +162,12 @@ export default function App() {
                 setBusy("idle");
             }
         },
-        [activeProviderName, folderMetadataLanguages, settings, t],
+        [activeProviderName, folderMetadataLanguages, settings, t, busy, manualMode, manualTitle, manualSeason],
     );
 
     useEffect(() => {
         let unlisten: (() => void) | undefined;
+        let disposed = false;
         import("@tauri-apps/api/webview")
             .then(({ getCurrentWebview }) =>
                 getCurrentWebview().onDragDropEvent((event) => {
@@ -167,11 +177,21 @@ export default function App() {
                 }),
             )
             .then((dispose) => {
-                unlisten = dispose;
+                if (disposed) dispose();
+                else unlisten = dispose;
             })
             .catch(() => undefined);
-        return () => unlisten?.();
+        return () => { disposed = true; unlisten?.(); };
     }, [scanPath]);
+
+    function invalidatePlan() {
+        setItems([]);
+        setConfirmApply(false);
+        setMatchRow(null);
+        setNotice(null);
+        setError(null);
+        setWorkflowPhase(root ? "review" : "select");
+    }
 
     async function chooseFolder() {
         try {
@@ -267,7 +287,7 @@ export default function App() {
                         <div className="header-actions">
                             {root && (
                                 <>
-                                    {metadataLanguageVisible && (
+                                    {metadataLanguageVisible && !manualMode && (
                                         <WorkspaceMetadataLanguageSelect
                                             value={activeMetadataLanguage}
                                             busy={busy !== "idle"}
@@ -285,6 +305,26 @@ export default function App() {
                             </button>
                         </div>
                     </div>
+
+                    <fieldset className="naming-options form-stack" disabled={busy !== "idle"}>
+                        <label><span>{t("manual.mode")}</span>
+                            <select value={manualMode ? "manual" : "metadata"} onChange={(event) => {
+                                setManualMode(event.target.value === "manual"); invalidatePlan();
+                            }}>
+                                <option value="metadata">{t("manual.metadata")}</option>
+                                <option value="manual">{t("manual.manual")}</option>
+                            </select>
+                        </label>
+                        {manualMode && <>
+                            <label><span>{t("manual.title")}</span><input value={manualTitle} onChange={(event) => {
+                                setManualTitle(event.target.value); invalidatePlan();
+                            }} /></label>
+                            <label><span>{t("manual.season")}</span><input type="number" min="0" max="999" step="1" value={manualSeason} onChange={(event) => {
+                                setManualSeason(event.target.value); invalidatePlan();
+                            }} /></label>
+                            <small>{t("manual.hint")}</small>
+                        </>}
+                    </fieldset>
 
                     <AnimatePresence mode="wait">
                         {!root ? (
@@ -304,21 +344,21 @@ export default function App() {
                         ) : (
                             <motion.div key="plan" className="plan-area" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                                 <SummaryStrip total={items.length} counts={counts} actionable={actionable.length} t={t} />
-                                <PlanTable items={items} busy={busy !== "idle" || workflowPhase === "complete"} onPickMatch={setMatchRow} uiLocale={uiLanguage} />
+                                <PlanTable items={items} busy={busy !== "idle" || workflowPhase === "complete" || manualMode} onPickMatch={setMatchRow} uiLocale={uiLanguage} />
                             </motion.div>
                         )}
                     </AnimatePresence>
 
                     {(error || notice || busy !== "idle") && (
-                        <StatusBanner busy={busy} error={error} notice={notice} onClose={() => { setError(null); setNotice(null); }} providerName={activeProviderName} t={t} />
+                        <StatusBanner busy={busy} error={error} notice={notice} onClose={() => { setError(null); setNotice(null); }} providerName={activeProviderName} manualMode={manualMode} t={t} />
                     )}
                 </section>
             </main>
 
             <footer className="apply-bar">
                 <div>
-                    <span className={`api-dot ${settings.has_api_key ? "ready" : ""}`} />
-                    {settings.has_api_key
+                    <span className={`api-dot ${manualMode || settings.has_api_key ? "ready" : ""}`} />
+                    {manualMode ? t("manual.offline") : settings.has_api_key
                         ? t("footer.connected", { provider: activeProviderName })
                         : t("footer.keyRequired", { provider: activeProviderName })}
                     {root && <><span className="footer-separator" />{t("footer.previewCount", { count: items.length })}</>}
@@ -437,7 +477,7 @@ export function PlanTable({ items, busy, onPickMatch, uiLocale = "en-US" }: { it
                         <motion.tr key={item.source} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index * 0.025, 0.3) }}>
                             <td><div className="file-cell"><span>{index + 1}</span><div><PlanText value={item.source_name} /><small>{item.parsed ? `S${pad(item.parsed.season)} E${pad(item.parsed.episode)}` : t("table.unparsed")}</small></div></div></td>
                             <td><PlanText className="target-name" value={item.target_name} />{item.detail && <small className="row-detail">{item.detail}</small>}</td>
-                            <td>{item.match ? <div className="match-cell"><PlanText value={item.match.name} /><small>{t("table.confidence", { value: Math.round(item.match.confidence) })}</small></div> : <span className="muted">{t("table.unmatched")}</span>}</td>
+                            <td>{item.match ? <div className="match-cell"><PlanText value={item.match.name} /><small>{t("table.confidence", { value: Math.round(item.match.confidence) })}</small></div> : <span className="muted">{item.manual_title ? t("manual.manual") : t("table.unmatched")}</span>}</td>
                             <td><StatusPill status={item.status} t={t} /></td>
                             <td><button className="row-action" disabled={busy || !item.parsed} onClick={() => onPickMatch(item)} title={t("table.pickMatch")}><Search size={15} /></button></td>
                         </motion.tr>
@@ -455,8 +495,8 @@ function StatusPill({ status, t }: { status: string; t: Translator }) {
     return <span className={`status-pill ${ok ? "ok" : "warn"}`}>{ok ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}{label}</span>;
 }
 
-function StatusBanner({ busy, error, notice, onClose, providerName, t }: { busy: BusyState; error: string | null; notice: string | null; onClose: () => void; providerName: string; t: Translator }) {
-    const labels: Record<BusyState, string> = { idle: "", scanning: t("busy.scanning", { provider: providerName }), matching: t("busy.matching"), applying: t("busy.applying") };
+function StatusBanner({ busy, error, notice, onClose, providerName, manualMode, t }: { busy: BusyState; error: string | null; notice: string | null; onClose: () => void; providerName: string; manualMode: boolean; t: Translator }) {
+    const labels: Record<BusyState, string> = { idle: "", scanning: manualMode ? t("manual.scanning") : t("busy.scanning", { provider: providerName }), matching: t("busy.matching"), applying: t("busy.applying") };
     return (
         <motion.div className={`status-banner ${error ? "error" : ""}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
             {busy !== "idle" ? <LoaderCircle className="spin" size={17} /> : error ? <AlertCircle size={17} /> : <CheckCircle2 size={17} />}

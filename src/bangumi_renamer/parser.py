@@ -124,7 +124,7 @@ def _to_int(value: str | None) -> int | None:
         return None
     try:
         return int(value)
-    except ValueError:
+    except (ValueError, TypeError):
         return None
 
 
@@ -167,12 +167,13 @@ def extract_media_extension(path: Path, anitopy_extension: str | None = None) ->
     return ".".join(suffix_parts)
 
 
-def parse(path: str | Path) -> ParsedFile:
+def parse(path: str | Path, *, title_override: str | None = None) -> ParsedFile:
     """Parse a single video filename.
 
     Raises ParseError if the filename does not yield a title + episode number.
     Missing season defaults to 1 (common for single-season shows and for anime
     where releases drop the season tag).
+    An explicit title also permits bare episode names such as ``01.mkv``.
     """
     p = Path(path)
     try:
@@ -186,6 +187,13 @@ def parse(path: str | Path) -> ParsedFile:
     fallback_season: int | None = None
     if title and episode is None:
         title, fallback_season, episode = _extract_fallback_markers(title)
+    if title_override is not None:
+        title = title_override
+        # Bare episode filenames are unambiguous only with an explicit series title.
+        extension = extract_media_extension(p)
+        stem = p.name[: -(len(extension) + 1)]
+        if episode is None and re.fullmatch(r"[0-9０-９]{1,4}", stem):
+            episode = int(stem)
     if not title or episode is None:
         raise ParseError(f"anitopy could not extract title+episode from {p.name!r}")
 

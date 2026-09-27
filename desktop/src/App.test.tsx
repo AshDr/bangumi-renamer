@@ -22,6 +22,17 @@ const row = (overrides: Partial<PlanItem> = {}): PlanItem => ({
 });
 
 describe("desktop plan table tooltips", () => {
+    it("labels manual plans without claiming a metadata match or confidence", () => {
+        const html = renderToStaticMarkup(
+            <PlanTable items={[row({ match: null, manual_title: "Custom" })]}
+                busy={true} onPickMatch={() => undefined} />,
+        );
+        expect(html).toContain("Manual naming");
+        expect(html).not.toContain("Unmatched");
+        expect(html).not.toContain("confidence");
+        expect(html).toContain('disabled=""');
+    });
+
     it("exposes complete source, planned, and match names", () => {
         const html = renderToStaticMarkup(
             <PlanTable items={[row()]} busy={false} onPickMatch={() => undefined} />,

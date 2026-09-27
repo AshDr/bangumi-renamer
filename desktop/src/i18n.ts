@@ -3,6 +3,16 @@ import type { UiLocale } from "./types";
 export const supportedUiLocales: UiLocale[] = ["zh-CN", "zh-TW", "en-US", "ja-JP"];
 
 const en = {
+    "manual.mode": "Naming mode",
+    "manual.metadata": "Metadata matching",
+    "manual.manual": "Manual naming",
+    "manual.title": "Series title",
+    "manual.season": "Season (0 for specials)",
+    "manual.hint": "Applies to all media in this folder and subfolders. Keeps episode numbers and subtitle tags. Rescan after editing to preview.",
+    "manual.invalid": "Enter a series title and an integer season from 0 to 999.",
+    "manual.offline": "Manual naming - no API key required",
+    "manual.scanning": "Scanning files for manual naming...",
+
     "common.cancel": "Cancel",
     "common.close": "Close",
     "title.settings": "Settings",
@@ -105,6 +115,16 @@ export type TranslationValues = Record<string, string | number>;
 export type Translator = (key: TranslationKey, values?: TranslationValues) => string;
 
 const zhCN: Messages = {
+    "manual.mode": "命名方式",
+    "manual.metadata": "元数据匹配",
+    "manual.manual": "手动命名",
+    "manual.title": "剧名",
+    "manual.season": "季度（0 表示特别篇）",
+    "manual.hint": "应用于此文件夹及子目录内的全部媒体文件，保留集数和字幕标签。修改后请重新扫描生成预览。",
+    "manual.invalid": "请输入剧名，以及 0 到 999 之间的整数季度。",
+    "manual.offline": "手动命名 - 无需 API 密钥",
+    "manual.scanning": "正在扫描文件并生成手动命名预览...",
+
     "common.cancel": "取消", "common.close": "关闭", "title.settings": "设置",
     "workflow.label": "工作流程", "workflow.choose": "选择文件夹", "workflow.review": "确认匹配", "workflow.apply": "重命名完成",
     "workspace.select": "选择媒体文件夹", "workspace.hint": "将文件夹拖到此处，或使用选择器。", "workspace.rescan": "重新扫描", "workspace.choose": "选择文件夹", "workspace.rematch": "重新匹配", "workspace.chooseOther": "选择其他文件夹",
@@ -123,6 +143,16 @@ const zhCN: Messages = {
 
 const zhTW: Messages = {
     ...zhCN,
+    "manual.mode": "命名方式",
+    "manual.metadata": "中繼資料配對",
+    "manual.manual": "手動命名",
+    "manual.title": "劇名",
+    "manual.season": "季度（0 表示特別篇）",
+    "manual.hint": "套用至此資料夾及子目錄中的所有媒體檔案，保留集數與字幕標籤。修改後請重新掃描以產生預覽。",
+    "manual.invalid": "請輸入劇名，以及 0 到 999 之間的整數季度。",
+    "manual.offline": "手動命名 - 無需 API 金鑰",
+    "manual.scanning": "正在掃描檔案並產生手動命名預覽...",
+
     "common.cancel": "取消", "common.close": "關閉", "title.settings": "設定",
     "workflow.label": "工作流程", "workflow.choose": "選擇資料夾", "workflow.review": "確認配對", "workflow.apply": "重新命名完成",
     "workspace.select": "選擇媒體資料夾", "workspace.hint": "將資料夾拖到此處，或使用選擇器。", "workspace.rescan": "重新掃描", "workspace.choose": "選擇資料夾", "workspace.rematch": "重新配對", "workspace.chooseOther": "選擇其他資料夾",
@@ -140,6 +170,16 @@ const zhTW: Messages = {
 
 const jaJP: Messages = {
     ...en,
+    "manual.mode": "命名方法",
+    "manual.metadata": "メタデータ照合",
+    "manual.manual": "手動命名",
+    "manual.title": "作品名",
+    "manual.season": "シーズン（特別編は0）",
+    "manual.hint": "このフォルダーとサブフォルダーの全メディアに適用します。話数と字幕タグは維持します。変更後は再スキャンしてください。",
+    "manual.invalid": "作品名と0から999までの整数のシーズンを入力してください。",
+    "manual.offline": "手動命名 - APIキー不要",
+    "manual.scanning": "手動命名のプレビューを作成中...",
+
     "common.cancel": "キャンセル", "common.close": "閉じる", "title.settings": "設定",
     "workflow.label": "ワークフロー", "workflow.choose": "フォルダー選択", "workflow.review": "一致を確認", "workflow.apply": "名前変更完了",
     "workspace.select": "メディアフォルダーを選択", "workspace.hint": "ここにフォルダーをドロップするか、選択画面を使用します。", "workspace.rescan": "再スキャン", "workspace.choose": "フォルダーを選択", "workspace.rematch": "再照合", "workspace.chooseOther": "別のフォルダーを選択",

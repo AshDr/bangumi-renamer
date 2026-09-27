@@ -4,6 +4,11 @@ export type UiLocale = "zh-CN" | "zh-TW" | "en-US" | "ja-JP";
 export type MetadataLanguage = UiLocale;
 export type MetadataProvider = "thetvdb" | "tmdb";
 
+export interface ManualNaming {
+    title: string;
+    season: number;
+}
+
 export interface DesktopSettings {
     metadata_provider: MetadataProvider;
     ui_language: UiLocale;
@@ -34,6 +39,7 @@ export interface MatchResult {
 }
 
 export interface PlanItem {
+    manual_title?: string | null;
     source: string;
     source_name: string;
     target: string | null;

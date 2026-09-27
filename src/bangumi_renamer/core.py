@@ -8,7 +8,7 @@ Typer or Rich.
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from .history import record_apply
@@ -24,6 +24,21 @@ SeasonCache = dict[tuple[int, int], dict[int, Episode]]
 MatchCache = dict[str, MatchResult | MatchError]
 
 
+@dataclass(frozen=True, slots=True)
+class ManualNaming:
+    """Explicit naming inputs that bypass all metadata lookups."""
+
+    title: str
+    season: int
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.title, str) or not self.title.strip():
+            raise ValueError("Manual title must not be empty.")
+        if type(self.season) is not int or not 0 <= self.season <= 999:
+            raise ValueError("Manual season must be an integer between 0 and 999.")
+        object.__setattr__(self, "title", self.title.strip())
+
+
 @dataclass(slots=True)
 class PlanItem:
     source: Path
@@ -32,13 +47,15 @@ class PlanItem:
     target: Path | None
     status: str  # "OK" | "unparsed" | "no match" | "no season" | "conflict" | "error"
     detail: str = ""
+    manual_title: str | None = None
 
 
 def build_plan(
     files: list[Path],
     *,
-    client: MetadataClient,
-    forced: MatchResult | None,
+    client: MetadataClient | None = None,
+    forced: MatchResult | None = None,
+    manual: ManualNaming | None = None,
     on_conflict: str = "suffix",
     progress_cb: ProgressCb | None = None,
     verbose: bool = False,
@@ -47,7 +64,12 @@ def build_plan(
 
     Per-season metadata fetches and per-title match results are memoised within
     a single call so a directory of one show only hits the provider once per season.
+    Manual naming bypasses metadata and preserves each parsed episode number.
     """
+    if manual is not None and forced is not None:
+        raise ValueError("Manual naming cannot be combined with a forced metadata match.")
+    if manual is None and client is None:
+        raise ValueError("A metadata client is required unless manual naming is selected.")
     season_cache: SeasonCache = {}
     match_cache: MatchCache = {}
     plan: list[PlanItem] = []
@@ -58,11 +80,22 @@ def build_plan(
         if progress_cb is not None:
             progress_cb(idx, total, source)
 
-        parsed = _parse_source(source, verbose=verbose)
+        parsed = _parse_source(source, verbose=verbose, manual=manual)
         if isinstance(parsed, PlanItem):
             plan.append(parsed)
             continue
 
+        if manual is not None:
+            parsed = replace(parsed, title=manual.title, season=manual.season)
+            item = _build_plan_item(
+                source, parsed, None, {}, on_conflict=on_conflict,
+                planned_targets=planned_targets, series=manual.title,
+            )
+            item.manual_title = manual.title
+            plan.append(item)
+            continue
+
+        assert client is not None
         match_result = _resolve_match(parsed, client=client, forced=forced, match_cache=match_cache)
         if isinstance(match_result, PlanItem):
             plan.append(match_result)
@@ -92,8 +125,12 @@ def build_plan(
     return plan
 
 
-def _parse_source(source: Path, *, verbose: bool) -> ParsedFile | PlanItem:
+def _parse_source(
+    source: Path, *, verbose: bool, manual: ManualNaming | None = None
+) -> ParsedFile | PlanItem:
     try:
+        if manual is not None:
+            return parse(source, title_override=manual.title)
         return parse(source)
     except ParseError as exc:
         return PlanItem(
@@ -160,17 +197,21 @@ def _get_season_episodes(
 def _build_plan_item(
     source: Path,
     parsed: ParsedFile,
-    match_result: MatchResult,
+    match_result: MatchResult | None,
     episodes: dict[int, Episode],
     *,
     on_conflict: str,
     planned_targets: set[Path],
+    series: str | None = None,
 ) -> PlanItem:
     episode = episodes.get(parsed.episode)
     episode_title = episode.name if episode else ""
+    if series is None:
+        assert match_result is not None
+        series = match_result.name
 
     new_name = build_new_name(
-        series=match_result.name,
+        series=series,
         season=parsed.season,
         episode=parsed.episode,
         episode_title=episode_title,

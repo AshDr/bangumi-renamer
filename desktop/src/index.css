@@ -360,3 +360,8 @@ tbody tr:hover { background: #fafaf8; }
     th:nth-child(3), td:nth-child(3) { display: none; }
     th:nth-child(1) { width: 32%; } th:nth-child(2) { width: 38%; } th:nth-child(4) { width: 18%; }
 }
+
+.naming-options { margin: 0 0 18px; padding: 14px; border: 1px solid #deded9; border-radius: 12px; display: flex; flex-wrap: wrap; gap: 12px; }
+.naming-options label { flex: 1 1 160px; }
+.naming-options small { flex-basis: 100%; }
+[data-theme="dark"] .naming-options { border-color: #383837; }

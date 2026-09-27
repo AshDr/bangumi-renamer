@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import sys
 from enum import StrEnum
 from pathlib import Path
@@ -14,7 +15,7 @@ import typer
 from rich.console import Console
 
 from . import __version__
-from .core import PlanItem, apply_plan, build_plan
+from .core import ManualNaming, PlanItem, apply_plan, build_plan
 from .display import PlanRow, render_plain, render_summary, render_table, summarize_rows
 from .matcher import MatchError, force_match
 from .scanner import scan
@@ -97,8 +98,12 @@ def _json_payload(
     }
 
 
-def _suggest_apply(path: Path) -> str:
-    return f"Next: run `bangumi-renamer {path} --apply` when the preview looks right."
+def _suggest_apply(path: Path, manual: ManualNaming | None = None) -> str:
+    args = ["bangumi-renamer", str(path)]
+    if manual is not None:
+        args.extend(["--title", manual.title, "--season", str(manual.season)])
+    args.append("--apply")
+    return f"Next: run `{shlex.join(args)}` when the preview looks right."
 
 
 def _write_json(console: Console, payload: dict[str, Any]) -> None:
@@ -118,6 +123,12 @@ def rename(
     apply: bool = typer.Option(False, "--apply", help="Actually rename files (default: dry-run)."),
     tmdb_id: int | None = typer.Option(
         None, "--tmdb-id", help="Force a specific TMDB TV id, skipping auto-match."
+    ),
+    title: str | None = typer.Option(
+        None, "--title", help="Use this series title without metadata (requires --season)."
+    ),
+    season: int | None = typer.Option(
+        None, "--season", min=0, max=999, help="Manual season, including 0 for specials."
     ),
     lang: str = typer.Option("en-US", "--lang", help="TMDB metadata language."),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt on --apply."),
@@ -165,6 +176,16 @@ def rename(
             stderr_console.print("[red]Choose either --plain or --json, not both.[/]")
             raise typer.Exit(code=2)
 
+        manual = None
+        if title is not None or season is not None:
+            if title is None or not title.strip() or season is None or tmdb_id is not None:
+                stderr_console.print(
+                    "[red]Use --title with a non-empty name and --season together, "
+                    "without --tmdb-id.[/]"
+                )
+                raise typer.Exit(code=2)
+            manual = ManualNaming(title, season)
+
         output_mode = (
             "json"
             if json_output
@@ -175,9 +196,12 @@ def rename(
             stderr_console.print("[yellow]No video files or supported subtitle files found.[/]")
             raise typer.Exit(code=0)
 
-        client = TmdbClient(lang=lang)
+        client = None if manual is not None else TmdbClient(lang=lang)
         try:
-            forced = force_match(tmdb_id, client=client) if tmdb_id is not None else None
+            forced = (
+                force_match(tmdb_id, client=client)
+                if tmdb_id is not None and client is not None else None
+            )
             if forced is not None and verbose:
                 stderr_console.print(
                     f"[dim]Forcing match: {forced.name} (tmdb_id={forced.tmdb_id})[/]"
@@ -188,11 +212,13 @@ def rename(
                 files=files,
                 client=client,
                 forced=forced,
+                manual=manual,
                 on_conflict=on_conflict.value,
                 verbose=verbose,
             )
         finally:
-            client.close()
+            if client is not None:
+                client.close()
 
         rows = _build_rows(plan)
         renames: list[tuple[Path, Path]] = []
@@ -217,7 +243,7 @@ def rename(
                     )
                 )
             else:
-                stderr_console.print(f"[dim]{_suggest_apply(path)}[/]")
+                stderr_console.print(f"[dim]{_suggest_apply(path, manual)}[/]")
             raise typer.Exit(code=0)
 
         to_apply: list[PlanItem] = [
